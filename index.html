@@ -11,11 +11,12 @@
   <link rel="stylesheet" href="life-polish.css">
   <link rel="stylesheet" href="v05-polish.css">
   <link rel="stylesheet" href="v06-game.css">
+  <link rel="stylesheet" href="v07-playful.css">
 </head>
 <body>
   <main class="app-shell">
     <header class="topbar">
-      <div>
+      <div class="brand-lockup">
         <p class="eyebrow">LIFE • MONEY • MAYHEM</p>
         <h1>ONE MORE DAY</h1>
       </div>
@@ -24,10 +25,14 @@
 
     <section id="startScreen" class="screen start-screen">
       <div class="hero-art cover-art" aria-hidden="true">
-        <div class="cover-copy"><strong>YOUR STORY<br>STARTS HERE</strong></div>
+        <div class="cover-copy">
+          <span class="cover-kicker">NO SHORTCUTS. JUST CHOICES.</span>
+          <strong><span class="cover-word">ONE</span><span class="cover-word">MORE</span><span class="cover-word accent-word">DAY</span></strong>
+          <small>Build something. Risk something. Become someone.</small>
+        </div>
         <span class="cover-shade"></span><span class="taxi">🚐</span><span class="protea">✺</span>
       </div>
-      <p class="chapter">PROTOTYPE 0.1</p>
+      <p class="chapter start-chapter">YOUR LIFE. YOUR MOVES.</p>
       <h2>Seven days.<br><em>Make them count.</em></h2>
       <p class="lede">Build your hustle, dodge bad luck, and decide whether you want to look rich—or become wealthy.</p>
       <form id="newLifeForm" class="new-life-card">
@@ -54,6 +59,7 @@
       </details>
 
       <section id="storyCard" class="story-card">
+        <div class="scene-stamp" aria-hidden="true">TODAY'S STORY</div>
         <div class="story-head">
           <span id="storyIcon" class="story-icon">🌅</span>
           <div><p id="storyKicker" class="chapter">MONDAY MORNING</p><h2 id="storyTitle">The week is yours.</h2></div>
@@ -86,13 +92,26 @@
 
   <div id="chaseGame" class="chase-modal hidden" role="dialog" aria-modal="true" aria-labelledby="chaseTitle">
     <div class="chase-card">
-      <p class="chapter">QUICK! GET YOUR PHONE BACK</p>
-      <h2 id="chaseTitle">Catch the thief!</h2>
-      <p>Tap the moving thief three times before they escape.</p>
-      <div class="chase-status"><strong id="chaseHits">0 / 3 catches</strong><span id="chaseTime">6.0s</span></div>
-      <div id="chaseTrack" class="chase-track"><button id="thiefButton" type="button" aria-label="Catch the thief">🏃🏾</button></div>
+      <div class="chase-heading">
+        <div><p class="chapter">CHAOS AT THE TAXI RANK</p><h2 id="chaseTitle">Don’t lose them!</h2></div>
+        <span class="chase-phone">📱</span>
+      </div>
+      <p id="chaseCallout">Tap the runner four times. They keep changing lanes.</p>
+      <div class="chase-status"><strong id="chaseHits">0 / 4 catches</strong><span id="chaseTime">7.0s</span></div>
+      <div class="chase-meter" aria-hidden="true"><i id="chaseMeterFill"></i></div>
+      <div id="chaseTrack" class="chase-track">
+        <div class="rank-skyline" aria-hidden="true"></div>
+        <div class="rank-sign" aria-hidden="true">TAXI RANK</div>
+        <span class="rank-extra extra-one" aria-hidden="true">🚕</span>
+        <span class="rank-extra extra-two" aria-hidden="true">🧺</span>
+        <span class="rank-extra extra-three" aria-hidden="true">🧍🏾</span>
+        <div id="chaseBurst" class="chase-burst" aria-hidden="true"></div>
+        <button id="thiefButton" type="button" aria-label="Catch the phone thief"><span>🏃🏾</span><b>📱</b></button>
+      </div>
+      <p class="chase-tip">KEEP YOUR EYES UP • TAP FAST • DON’T PANIC</p>
     </div>
   </div>
-  <script src="js/life-game.js?v=06.1"></script>
+  <script src="js/game-systems.js?v=07"></script>
+  <script src="js/life-game.js?v=07"></script>
 </body>
 </html>
