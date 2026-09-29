@@ -1,51 +1,44 @@
-# ONE MORE DAY — Prototype v0.1
+# ONE MORE DAY — SA Edition v0.8
 
-A small, mobile-first life and money simulator set in a South African-inspired city. Build cash, protect your wellbeing, choose wants versus wealth, try a tiny business, and survive one chaotic week.
+A mobile-first browser life and money game built around South African everyday pressure, owner-run hustles, career choices, relationships, transport chaos, and one tense phone-theft chase.
 
-## Play locally
+## Play it
 
-No installation or build tools are needed.
+Open index.html in a modern browser, or serve this folder with any simple static server such as VS Code Live Server. No installation, account, or build process is required.
 
-1. Download or copy this folder.
-2. Open `index.html` in Chrome, Edge, Firefox, or Safari.
-3. Start a new life.
+Your progress saves on the current browser only. A new v0.8 save uses one-more-day-v08; older v0.6/v0.7 saves migrate safely while the original save is kept untouched for rollback.
 
-For the most consistent local experience, you can also serve the folder with any static web server, for example VS Code's **Live Server** extension.
+## Included in v0.8
 
-## Publish with GitHub Pages
-
-1. Create a GitHub repository and add all files from this folder.
-2. In the repository, open **Settings → Pages**.
-3. Under **Build and deployment**, choose **Deploy from a branch**.
-4. Select the `main` branch and `/ (root)` folder, then save.
-5. GitHub will provide a public link after deployment finishes.
-
-## Included in v0.1
-
-- A seven-day playable loop with a Week 1 summary
-- Three career paths with automatic daily work, experience, and promotions
-- One-time career-specific equipment purchases, workers, passive team income, and unlockable opportunities
-- Promotion milestone bonuses so progress creates noticeable rewards
-- Choice events, a want-versus-wealth dilemma, and a small-business investment
-- A phone-theft chase whose outcome uses stats and chance
-- Cash, net worth, health, energy, knowledge, social, happiness, and reputation
-- Automatic browser saving with `localStorage`
-- Responsive, touch-friendly layout
+- Name and gender setup with equal starting odds and gender-based pronouns/avatar only
+- Compact Day/Age/Cash/Energy HUD with expandable wellbeing, work, relationship, and asset panels
+- Automatic daily career or business settlement, with meaningful work/owner decisions rather than repeated job picking
+- Corporate performance, boss and co-worker relationships, promotions, verbal/written warnings, and dismissal for severe or repeated behaviour
+- Owner-operated car-wash, moving/helping, and buy-and-resell startups: one-time equipment, employees, trust, sites, growth, closure and restart
+- Taxi, e-hailing, bicycle, car, e-hailing-driver income, strike, surge, full-taxi passage, flat tyre, breakdown, and Stay Home outcomes
+- Shuffled daily events, contextual follow-ups, delayed consequences, and South African community details
+- Ordered +R/−R money animations
+- Original three-lane phone-theft chase with touch, A/D, arrows, buttons, pause/resume, and fallback controls
+- Responsive, keyboard-friendly static website suitable for GitHub Pages
 
 ## Project structure
 
 ```text
-one-more-day/
-├── index.html          Game screens and interface
-├── styles.css          Mobile-first visual design
-├── js/
-│   └── game.js         State, events, economy, saving, and progression
-├── README.md           Setup and publishing guide
-└── TESTER_CHECKLIST.md Short playtest script
+index.html                    Production game entry
+v08-sa-edition.css            SA Edition interface and responsive styling
+js/core/state.js              Schema v8, validation, saves and migration
+js/data/                      Economy values and event content
+js/systems/                   Day, career, business, travel and relationships
+js/minigames/                 Fair seeded phone-theft runner
+js/ui/                        Rendering and money feedback
+tests/                        Logic and production smoke checks
+assets/credits.md             Cover-image attribution
 ```
 
-## Expanding later
+## GitHub Pages
 
-Add new daily events to the `events` object in `js/game.js`, or add hustles to the `hustles` array. The state and rendering functions are kept separate enough to extend the week, add achievements, or introduce deeper businesses later.
+Push the repository to GitHub, then select **Settings → Pages → Deploy from a branch → main / root**. GitHub publishes the game at the repository Pages address after its workflow finishes.
 
-All progress is stored only in the current browser. Clearing site data resets the save.
+## Cover image attribution
+
+The cover photograph is a locally stored 960-pixel derivative of **SouthAfricanMinibus.jpg** by **Martinvl** (8 November 2016), used under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). It is responsively cropped with a dark readability gradient and flag-colour overlay. Full source and modification credit: assets/credits.md.

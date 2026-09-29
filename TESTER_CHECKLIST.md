@@ -1,20 +1,16 @@
-# Prototype v0.1 tester checklist
+# ONE MORE DAY — v0.8 playtest checklist
 
-Please play one complete seven-day life. Note your device/browser and take a screenshot of anything broken or confusing.
+1. Start one life as Man, Woman and Non-binary. Check pronouns/avatar change, but starting stats stay equal.
+2. Play 14 days. Note any repeated recent headline or repetitive work rhythm.
+3. Try corporate work: make strong and poor choices, then check promotion, verbal warning, written warning and dismissal remain possible without being predicted in advance.
+4. Try all three startups. Buy equipment only once, hire helpers, and confirm the player remains the owner with no manager appearing.
+5. Trigger full taxi/passage, flat tyre, breakdown, strike and e-hailing surge. Confirm unavailable transport never appears.
+6. Buy bicycle and car once. Assign the car to an e-hailing driver, then confirm it cannot also be driven that day.
+7. Stay home as an employee, solo owner and staffed owner. Check that recovery is real but the consequences differ.
+8. Confirm every cash change shows a visible plus/minus amount and final balance.
+9. Win and lose the phone chase using touch/swipe, keyboard and buttons. Switch tabs during a chase, then return.
+10. Reload during an unresolved daily choice and confirm the event/choice order does not reroll.
+11. Test at 320 px, phone landscape, desktop and 200% browser zoom. No text or controls should clip or create horizontal scrolling.
+12. Open the deployed GitHub Pages game in a fresh browser session and check the console for errors.
 
-- [ ] Start a new life and enter a name.
-- [ ] Try all three hustles: wash cars, help someone move, and buy & resell.
-- [ ] Check that cash, energy, and other stats change after choices.
-- [ ] On Day 2, choose between the tempting purchase and keeping the cash.
-- [ ] On Day 3, try the small-business investment if you can afford it.
-- [ ] Play the phone-theft chase event and note whether the result feels fair.
-- [ ] Close or refresh the browser, then confirm **Continue saved life** restores progress.
-- [ ] Reach the Week 1 summary and check its totals.
-- [ ] Try it on a phone or narrow browser window; check that buttons are easy to tap and text does not overflow.
-
-Feedback prompts:
-
-1. Which decision was the most interesting?
-2. Was earning money too easy, too hard, or about right?
-3. Did any button, label, or outcome confuse you?
-4. What would make you want to play Week 2?
+Please send screenshots, console errors, final cash/net worth, the career or business path you chose, and anything confusing, unfair or especially fun.
