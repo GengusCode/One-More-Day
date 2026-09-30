@@ -1,6 +1,6 @@
 # ONE MORE DAY — SA Edition Systems Design (v0.8)
 
-**Status:** Approved conversational design; awaiting written-spec review  
+**Status:** Approved for implementation planning  
 **Date:** 2026-09-29  
 **Target:** Mobile-first browser prototype hosted on GitHub Pages
 
