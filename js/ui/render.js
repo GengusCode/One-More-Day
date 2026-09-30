@@ -1,0 +1,249 @@
+import { formatRand } from "../data/economy.js";
+import { validateName } from "../core/state.js";
+import { BUSINESS_UPGRADES } from "../systems/business.js";
+
+const GENDER_IDS = new Set(["man", "woman", "non-binary"]);
+
+export function escapeText(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+export function buildSetupModel({ name = "", gender = "", hasSave = false } = {}) {
+  const validation = validateName(name);
+  const hasGender = GENDER_IDS.has(gender);
+  return {
+    name, gender, hasSave,
+    canStart: validation.ok && hasGender,
+    error: !validation.ok ? validation.error : !hasGender ? "Choose a gender to shape your character." : "",
+  };
+}
+
+export function buildGameViewModel(state) {
+  return {
+    playerName: state.profile.name,
+    hud: {
+      day: state.calendar.day,
+      age: state.calendar.age,
+      cash: formatRand(state.finances.cash),
+      energy: state.stats.energy,
+    },
+  };
+}
+
+function relationshipSummary(state) {
+  const people = Object.values(state.relationships.people || {});
+  if (!people.length) return "The people in your life will appear here.";
+  return people.map((person) => person.name + " · " + person.score).join(" • ");
+}
+
+export function getSecondaryPanels(state) {
+  const open = new Set(state.settings.openPanels || []);
+  const workSummary = state.career.active
+    ? (state.career.role || "Corporate career") + " · Performance " + state.career.performance
+    : state.business.active
+      ? (state.business.title || "Solo Owner") + " · Trust " + state.business.trust
+      : "Choose a path to begin earning.";
+  const transport = state.transport.owned.length ? state.transport.owned.join(" • ") : "Taxi available · No transport owned";
+  return [
+    { id: "wellbeing", label: "Wellbeing", summary: "Health, happiness and growth", expanded: open.has("wellbeing"), content: [
+      ["Health", state.stats.health], ["Knowledge", state.stats.knowledge], ["Social", state.stats.social],
+      ["Happiness", state.stats.happiness], ["Reputation", state.stats.reputation], ["Net worth", formatRand(state.finances.netWorth)],
+    ] },
+    {
+      id: "career-business", label: "Work & business", summary: workSummary, expanded: open.has("career-business"),
+      content: state.business.active ? [
+        ["Status", state.business.title], ["Customer trust", state.business.trust],
+        ["Capacity", state.business.capacity], ["Team", state.business.staff.length + " people"],
+      ] : [["Status", workSummary], ["Warnings", state.career.warnings.length + " written · " + state.career.verbalWarnings.length + " verbal"]],
+      actions: state.business.active ? [
+        ...Object.entries(BUSINESS_UPGRADES)
+          .filter(([id, upgrade]) => upgrade.businessId === state.business.id && !state.assets.ownedUpgradeIds.includes(id))
+          .map(([id, upgrade]) => ({
+            id, action: "BUY_UPGRADE", label: "Buy " + upgrade.name, detail: formatRand(upgrade.cost), disabled: state.finances.cash < upgrade.cost,
+          })),
+        { id: "helper", action: "HIRE_EMPLOYEE", label: "Hire a helper", detail: "Adds capacity; R80 daily wage" },
+      ] : [],
+    },
+    { id: "relationships", label: "Relationships", summary: Object.keys(state.relationships.people || {}).length + " people", expanded: open.has("relationships"), content: [["Your circle", relationshipSummary(state)]] },
+    {
+      id: "transport-assets", label: "Transport & assets", summary: transport, expanded: open.has("transport-assets"), content: [
+        ["Available", transport],
+        ["Car assignment", state.transport.dailyAssignment?.mode === "driver" ? "E-hailing driver working today" : "Available for you"],
+      ],
+      actions: [
+        ...(!state.transport.owned.includes("bicycle") ? [{
+          id: "bicycle", action: "BUY_ASSET", label: "Buy a bicycle", detail: formatRand(900), disabled: state.finances.cash < 900,
+        }] : []),
+        ...(!state.transport.owned.includes("car") ? [{
+          id: "car", action: "BUY_ASSET", label: "Buy a used car", detail: formatRand(18_000), disabled: state.finances.cash < 18_000,
+        }] : []),
+        ...(state.transport.owned.includes("car") && state.transport.dailyAssignment?.mode !== "driver" ? [{
+          id: "driver", action: "ASSIGN_DRIVER", label: "Let a driver use your car today", detail: "Earn R220–R450; you cannot drive it today",
+        }] : []),
+      ],
+    },
+  ];
+}
+
+function renderCover() {
+  return `
+    <section class="cover" aria-labelledby="cover-title">
+      <div class="cover__photo" aria-hidden="true"></div>
+      <div class="cover__flag" aria-hidden="true"></div>
+      <div class="cover__shade" aria-hidden="true"></div>
+      <div class="cover__copy">
+        <p class="cover__kicker">LIFE · MONEY · MAYHEM</p>
+        <h1 id="cover-title" class="cover__title"><span>ONE</span><span>MORE</span><span>DAY</span></h1>
+        <p class="cover__edition">SA EDITION</p>
+        <p class="cover__line">One choice can change the whole week.</p>
+      </div>
+    </section>`;
+}
+
+function setupMarkup(model, message) {
+  const gender = model.gender;
+  return `
+    <div class="start-layout">
+      ${renderCover()}
+      <section class="setup-card" aria-labelledby="new-life-title">
+        <p class="eyebrow">YOUR STORY STARTS HERE</p>
+        <h2 id="new-life-title">Start a new life</h2>
+        <p class="setup-card__intro">Build a future, survive the chaos, and make your money last.</p>
+        <form id="newLifeForm" novalidate>
+          <label class="field-label" for="playerName">What should we call you?</label>
+          <input id="playerName" name="playerName" type="text" value="${escapeText(model.name)}" maxlength="24"
+            autocomplete="given-name" aria-describedby="nameHelp setupError" placeholder="e.g. Anele, Fatima, Liam or Priya">
+          <p id="nameHelp" class="field-help">2–24 letters; spaces, apostrophes and hyphens are welcome.</p>
+          <fieldset class="gender-field"><legend>Choose your character</legend><div class="gender-options">
+            <label class="gender-chip"><input type="radio" name="gender" value="man" ${gender === "man" ? "checked" : ""}><span>Man</span></label>
+            <label class="gender-chip"><input type="radio" name="gender" value="woman" ${gender === "woman" ? "checked" : ""}><span>Woman</span></label>
+            <label class="gender-chip"><input type="radio" name="gender" value="non-binary" ${gender === "non-binary" ? "checked" : ""}><span>Non-binary</span></label>
+          </div></fieldset>
+          <p id="setupError" class="form-error" aria-live="polite" tabindex="-1">${escapeText(model.error)}</p>
+          <button class="button button--primary button--wide" type="submit" data-action="START_LIFE" ${model.canStart ? "" : "disabled"}>START LIFE <span aria-hidden="true">→</span></button>
+          ${model.hasSave ? `<button class="button button--quiet button--wide" type="button" data-action="CONTINUE_LIFE">Continue saved life</button>` : ""}
+        </form>
+        <p class="save-note">Progress saves automatically on this device.</p>
+        ${message ? `<p class="notice" role="alert">${escapeText(message)}</p>` : ""}
+      </section>
+    </div>`;
+}
+
+function statRows(items) {
+  return items.map(([label, value]) => `<div class="detail-row"><span>${escapeText(label)}</span><strong>${escapeText(value)}</strong></div>`).join("");
+}
+
+function panelMarkup(panel) {
+  const regionId = "panel-" + panel.id;
+  return `
+    <section class="expandable">
+      <button class="expandable__toggle" type="button" data-action="TOGGLE_PANEL" data-panel="${panel.id}"
+        aria-expanded="${panel.expanded}" aria-controls="${regionId}">
+        <span><strong>${escapeText(panel.label)}</strong><small>${escapeText(panel.summary)}</small></span>
+        <span class="chevron" aria-hidden="true">⌄</span>
+      </button>
+      <div id="${regionId}" class="expandable__body" ${panel.expanded ? "" : "hidden"}>${statRows(panel.content)}
+        ${(panel.actions || []).map((action) => `<button class="panel-action" type="button" data-action="${escapeText(action.action)}" data-choice="${escapeText(action.id)}" ${action.disabled ? "disabled" : ""}><span>${escapeText(action.label)}</span><small>${escapeText(action.detail || "")}</small></button>`).join("")}
+      </div>
+    </section>`;
+}
+
+function eventMarkup(event) {
+  const safeEvent = event || {
+    icon: "☀", kicker: "DAY ONE", title: "Your first move is waiting",
+    text: "Choose a path and your ordinary days will begin settling automatically.", choices: [],
+  };
+  const choices = (safeEvent.choices || []).map((choice, index) => `
+    <button class="decision ${index === 0 ? "decision--feature" : ""}" type="button"
+      data-action="${escapeText(choice.action || "CHOOSE_EVENT")}" data-choice="${escapeText(choice.id)}" ${choice.disabled ? "disabled" : ""}>
+      <span>${escapeText(choice.label)}</span>${choice.detail ? `<small>${escapeText(choice.detail)}</small>` : ""}
+    </button>`).join("");
+  return `
+    <article class="event-card" aria-labelledby="today-title">
+      <div class="event-card__top"><span class="event-card__icon" aria-hidden="true">${escapeText(safeEvent.icon || "◆")}</span><p>${escapeText(safeEvent.kicker || "TODAY")}</p></div>
+      <h2 id="today-title">${escapeText(safeEvent.title)}</h2>
+      <p class="event-card__text">${escapeText(safeEvent.text)}</p>
+      ${safeEvent.result ? `<div class="result" aria-live="polite">${escapeText(safeEvent.result)}</div>` : ""}
+      <div class="decision-grid">${choices}</div>
+    </article>`;
+}
+
+function gameMarkup(state, context) {
+  const view = buildGameViewModel(state);
+  const panels = getSecondaryPanels(state);
+  return `
+    <div class="game-shell">
+      <header class="game-header"><div><p class="eyebrow">ONE MORE DAY · SA EDITION</p><p class="welcome">Sharp, ${escapeText(view.playerName)}.</p></div>
+        <button class="icon-button" type="button" data-action="RESET_LIFE" aria-label="Start a new life">↻</button></header>
+      <section class="hud" aria-label="Current life">
+        <div><span>DAY</span><strong>${view.hud.day}</strong></div><div><span>AGE</span><strong>${view.hud.age}</strong></div>
+        <div class="hud__money"><span>CASH</span><strong id="cashBalance">${view.hud.cash}</strong><div id="moneyFeedback" class="money-feedback" aria-live="polite"></div></div>
+        <div><span>ENERGY</span><strong>${view.hud.energy}</strong></div>
+      </section>
+      <main class="play-column">${eventMarkup(context.event)}
+        <button class="button button--primary button--wide next-day" type="button" data-action="NEXT_DAY" ${context.canAdvance ? "" : "disabled"}>${escapeText(context.nextLabel || "FINISH TODAY FIRST")}</button>
+        <div class="secondary-stack">${panels.map(panelMarkup).join("")}</div>
+      </main>
+      <p class="app-error" role="alert">${escapeText(context.error || "")}</p>
+      <p class="sr-only" id="appStatus" aria-live="polite">${escapeText(context.announcement || "")}</p>
+    </div>`;
+}
+
+export function createRenderer({ root, dispatch }) {
+  let draft = { name: "", gender: "" };
+  let currentContext = {};
+  let destroyed = false;
+  const updateSetupValidity = () => {
+    const form = root.querySelector("#newLifeForm");
+    if (!form) return;
+    draft = { name: form.elements.playerName.value, gender: form.elements.gender.value };
+    const model = buildSetupModel({ ...draft, hasSave: currentContext.hasSave });
+    form.querySelector('[data-action="START_LIFE"]').disabled = !model.canStart;
+    form.querySelector("#setupError").textContent = model.error;
+  };
+  const onInput = (event) => { if (event.target.closest("#newLifeForm")) updateSetupValidity(); };
+  const onClick = (event) => {
+    const button = event.target.closest("[data-action]");
+    if (!button || !root.contains(button) || button.disabled) return;
+    const action = button.dataset.action;
+    if (action === "START_LIFE") return;
+    dispatch(action, { id: button.dataset.choice || "", panel: button.dataset.panel || "" });
+  };
+  const onSubmit = (event) => {
+    if (event.target.id !== "newLifeForm") return;
+    event.preventDefault();
+    updateSetupValidity();
+    const model = buildSetupModel({ ...draft, hasSave: currentContext.hasSave });
+    if (model.canStart) dispatch("START_LIFE", { ...draft });
+  };
+  root.addEventListener("input", onInput);
+  root.addEventListener("change", onInput);
+  root.addEventListener("click", onClick);
+  root.addEventListener("submit", onSubmit);
+  return {
+    render(state, context = {}) {
+      if (destroyed) return;
+      currentContext = context;
+      if (context.screen === "setup") {
+        draft = { name: context.draftName || "", gender: context.draftGender || "" };
+        root.innerHTML = setupMarkup(
+          buildSetupModel({ ...draft, hasSave: context.hasSave }),
+          context.recoveryMessage || context.error || "",
+        );
+      } else root.innerHTML = gameMarkup(state, context);
+      if (context.focusTarget) root.querySelector?.(context.focusTarget)?.focus?.({ preventScroll: true });
+    },
+    announce(message) { const node = root.querySelector("#appStatus"); if (node) node.textContent = message; },
+    openPanel(id) { dispatch("OPEN_PANEL", { panel: id }); },
+    destroy() {
+      destroyed = true;
+      root.removeEventListener("input", onInput); root.removeEventListener("change", onInput);
+      root.removeEventListener("click", onClick); root.removeEventListener("submit", onSubmit);
+    },
+  };
+}
