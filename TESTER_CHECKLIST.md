@@ -1,16 +1,16 @@
-# ONE MORE DAY — v0.8 playtest checklist
+# ONE MORE DAY — v0.9 playtest checklist
 
-1. Start one life as Man, Woman and Non-binary. Check pronouns/avatar change, but starting stats stay equal.
-2. Play 14 days. Note any repeated recent headline or repetitive work rhythm.
-3. Try corporate work: make strong and poor choices, then check promotion, verbal warning, written warning and dismissal remain possible without being predicted in advance.
-4. Try all three startups. Buy equipment only once, hire helpers, and confirm the player remains the owner with no manager appearing.
-5. Trigger full taxi/passage, flat tyre, breakdown, strike and e-hailing surge. Confirm unavailable transport never appears.
-6. Buy bicycle and car once. Assign the car to an e-hailing driver, then confirm it cannot also be driven that day.
-7. Stay home as an employee, solo owner and staffed owner. Check that recovery is real but the consequences differ.
-8. Confirm every cash change shows a visible plus/minus amount and final balance.
-9. Win and lose the phone chase using touch/swipe, keyboard and buttons. Switch tabs during a chase, then return.
-10. Reload during an unresolved daily choice and confirm the event/choice order does not reroll.
-11. Test at 320 px, phone landscape, desktop and 200% browser zoom. No text or controls should clip or create horizontal scrolling.
-12. Open the deployed GitHub Pages game in a fresh browser session and check the console for errors.
+1. Start two new lives with different names or genders. Confirm each begins on the last school morning and receives a different-looking four-person circle.
+2. Complete the school morning, final exam, and school-ending choices. Check that the result is short, understandable, and leads naturally to the Jobs app.
+3. Open and close the phone. Try Jobs, Transport, Business, People, Life, and Time; confirm the main screen stays uncluttered and the back/close controls are always visible.
+4. Apply for office work and play until the result arrives. Also start one owner-operated business and confirm there is no manager above the player.
+5. Buy one business upgrade, try to buy it again, hire a helper, and confirm income, capacity, cash, and ownership respond correctly.
+6. Finish a day, then use **One week**. Repeat with **One month**. Confirm the cash summary is compact and no salary, business, or driver income appears twice for one day.
+7. Create a pending job result or delayed consequence before skipping. Confirm the skip stops early and returns control for the important moment.
+8. Load a real v0.8 save. Confirm money, work/business progress, assets, transport, and relationships remain, and the school opening does not replay.
+9. Check a birthday and later-life run. Confirm age changes once per 365 days, age 60 shows later life, and the final card respectfully summarizes the life with a working **Begin a new life** button.
+10. Trigger the phone-theft chase. Win once, hit an obstacle once, pause or switch tabs, and confirm the day continues without duplicate rewards.
+11. Test at 320 px wide, phone landscape, desktop, and 200% browser zoom. Check the phone sheet, app cards, decisions, ending card, and close buttons for clipping or horizontal scrolling.
+12. Reload during school, a pending application, an event choice, and after a skip. Confirm the same life returns without rerolled choices or lost progress.
 
-Please send screenshots, console errors, final cash/net worth, the career or business path you chose, and anything confusing, unfair or especially fun.
+Please send screenshots, browser console errors, device/browser details, final cash and net worth, the chosen career or business, and anything confusing, unfair, slow, or especially fun.
