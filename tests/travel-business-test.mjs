@@ -36,7 +36,12 @@ import {
 
 const tests = [];
 const test = (name, run) => tests.push({ name, run });
-const newLife = () => createNewLife({ name: "Anele", gender: "non-binary" });
+const newLife = () => {
+  const state = createNewLife({ name: "Anele", gender: "non-binary" });
+  state.life.stage = "adult";
+  state.life.school.step = "complete";
+  return state;
+};
 
 test("corporate work settles automatically and pays only once per day", () => {
   let state = startCareer(newLife(), "office");

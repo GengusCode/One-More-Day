@@ -5,8 +5,8 @@ import {
   buildGameViewModel,
   createRenderer,
   escapeText,
-  getSecondaryPanels,
 } from "../js/ui/render.js";
+import { buildPhoneModel } from "../js/ui/phone.js";
 import { createDefaultState, createNewLife } from "../js/core/state.js";
 import { createMoneyQueue } from "../js/ui/money-feedback.js";
 import { APP_VERSION, isCompatiblePageVersion } from "../js/core/version.js";
@@ -45,17 +45,12 @@ test("game view model exposes only the compact primary HUD", () => {
   assert.equal("netWorth" in view.hud, false);
 });
 
-test("secondary panels are collapsed and labelled by default", () => {
+test("secondary systems move into six phone apps", () => {
   const state = createNewLife({ name: "Ayesha", gender: "woman" });
-  const panels = getSecondaryPanels(state);
+  const model = buildPhoneModel(state);
   assert.deepEqual(
-    panels.map(({ id, expanded }) => [id, expanded]),
-    [
-      ["wellbeing", false],
-      ["career-business", false],
-      ["relationships", false],
-      ["transport-assets", false],
-    ],
+    model.apps.map(({ id }) => id),
+    ["jobs", "transport", "business", "people", "life", "time"],
   );
 });
 
@@ -63,9 +58,9 @@ test("the production entry references existing local modules and styles", async 
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
   assert.match(html, /id="app"/);
   assert.match(html, /type="module"\s+src="js\/app\.js"/);
-  assert.match(html, /href="v08-sa-edition\.css"/);
+  assert.match(html, /href="v09-life-begins\.css"/);
   await access(new URL("../js/app.js", import.meta.url));
-  await access(new URL("../v08-sa-edition.css", import.meta.url));
+  await access(new URL("../v09-life-begins.css", import.meta.url));
   await assert.rejects(access(new URL("../v08-preview.html", import.meta.url)));
 });
 
@@ -102,11 +97,11 @@ test("reduced motion money feedback settles immediately without dropping announc
   assert.deepEqual(events, ["show:tx-9", "announce:tx-9", "settle:tx-9"]);
 });
 
-test("blocks saves from a page whose version marker does not match v0.8", () => {
-  assert.equal(APP_VERSION, "0.8");
-  assert.equal(isCompatiblePageVersion("0.8", 8), true);
-  assert.equal(isCompatiblePageVersion("0.7", 8), false);
-  assert.equal(isCompatiblePageVersion("0.8", 7), false);
+test("blocks saves from a page whose version marker does not match v0.9", () => {
+  assert.equal(APP_VERSION, "0.9");
+  assert.equal(isCompatiblePageVersion("0.9", 9), true);
+  assert.equal(isCompatiblePageVersion("0.8", 9), false);
+  assert.equal(isCompatiblePageVersion("0.9", 8), false);
   assert.equal(isCompatiblePageVersion("", 8), false);
 });
 
