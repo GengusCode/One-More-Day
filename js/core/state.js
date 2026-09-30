@@ -1,8 +1,12 @@
 import { ECONOMY } from "../data/economy.js";
+import { ensureStarterPeople } from "../systems/people.js";
 
+export const SAVE_KEY_V9 = "one-more-day-v09";
 export const SAVE_KEY_V8 = "one-more-day-v08";
-export const LEGACY_SAVE_KEYS = Object.freeze(["one-more-day-v06"]);
-export const CORRUPT_BACKUP_KEY = "one-more-day-v08-corrupt-backup";
+export const LEGACY_SAVE_KEYS = Object.freeze([SAVE_KEY_V8, "one-more-day-v06"]);
+export const CORRUPT_BACKUP_KEY = "one-more-day-v09-corrupt-backup";
+
+export const LIFE_STAGES = Object.freeze(["school-finale", "adult", "later-life", "ended"]);
 
 const GENDERS = Object.freeze({
   man: Object.freeze({ subject: "he", object: "him", possessive: "his" }),
@@ -24,13 +28,22 @@ const clamp = (value, min = 0, max = 100) => Math.max(min, Math.min(max, Number(
 
 export function createDefaultState() {
   return {
-    schemaVersion: 8,
+    schemaVersion: 9,
     profile: {
       name: "",
       gender: "non-binary",
       pronouns: { ...GENDERS["non-binary"] },
     },
     calendar: { day: 1, age: 18, weekday: 1 },
+    life: {
+      stage: "adult",
+      school: { step: "complete", choiceIds: [] },
+      examResult: null,
+      ageDays: 0,
+      lastMilestone: null,
+      ended: false,
+      endingSummary: null,
+    },
     stats: {
       health: 78,
       energy: 72,
@@ -76,6 +89,11 @@ export function createDefaultState() {
       completedDecisionIds: [],
       closed: false,
     },
+    jobs: {
+      applications: [],
+      activeApplicationId: null,
+      lastResult: null,
+    },
     relationships: { people: {} },
     transport: {
       owned: [],
@@ -91,6 +109,10 @@ export function createDefaultState() {
     },
     eventDecks: {},
     delayedEvents: [],
+    timeline: {
+      lastSummary: null,
+      settledDayIds: [],
+    },
     dailyState: {
       day: 1,
       phase: "morning",
@@ -115,6 +137,7 @@ export function createDefaultState() {
       reducedMotion: false,
       sound: false,
       openPanels: [],
+      phone: { open: false, app: "home" },
     },
   };
 }
@@ -140,7 +163,12 @@ export function createNewLife({ name, gender }) {
     gender,
     pronouns: { ...GENDERS[gender] },
   };
-  return state;
+  state.life = {
+    ...state.life,
+    stage: "school-finale",
+    school: { step: "last-morning", choiceIds: [] },
+  };
+  return ensureStarterPeople(state, { seed: `${checkedName.value}:${gender}` });
 }
 
 export function calculateNetWorth(state) {
@@ -247,7 +275,7 @@ export function validateState(candidate) {
   const defaults = createDefaultState();
   const source = candidate && typeof candidate === "object" ? candidate : {};
   const state = copyKnown(defaults, source);
-  state.schemaVersion = 8;
+  state.schemaVersion = 9;
 
   const checkedName = validateName(source.profile?.name ?? state.profile.name);
   state.profile.name = checkedName.ok ? checkedName.value : "";
@@ -259,6 +287,20 @@ export function validateState(candidate) {
   state.calendar.day = Math.max(1, Math.round(Number(state.calendar.day) || 1));
   state.calendar.age = Math.max(18, Math.round(Number(state.calendar.age) || 18));
   state.calendar.weekday = Math.max(1, Math.min(7, Math.round(Number(state.calendar.weekday) || 1)));
+  state.life.stage = LIFE_STAGES.includes(source.life?.stage) ? source.life.stage : "adult";
+  state.life.school.step = String(source.life?.school?.step || (state.life.stage === "school-finale" ? "last-morning" : "complete"));
+  state.life.school.choiceIds = uniqueStrings(source.life?.school?.choiceIds);
+  state.life.examResult = source.life?.examResult && typeof source.life.examResult === "object"
+    ? clone(source.life.examResult)
+    : null;
+  state.life.ageDays = Math.max(0, Math.round(Number(source.life?.ageDays) || 0));
+  state.life.lastMilestone = source.life?.lastMilestone && typeof source.life.lastMilestone === "object"
+    ? clone(source.life.lastMilestone)
+    : null;
+  state.life.ended = state.life.stage === "ended" || Boolean(source.life?.ended);
+  state.life.endingSummary = source.life?.endingSummary && typeof source.life.endingSummary === "object"
+    ? clone(source.life.endingSummary)
+    : null;
   STAT_KEYS.forEach((key) => { state.stats[key] = clamp(state.stats[key]); });
 
   state.finances.cash = Math.round(Number(state.finances.cash) || 0);
@@ -286,6 +328,16 @@ export function validateState(candidate) {
   state.business.premises = Array.isArray(source.business?.premises) ? clone(source.business.premises) : [];
   state.business.completedDecisionIds = uniqueStrings(source.business?.completedDecisionIds);
 
+  state.jobs.applications = Array.isArray(source.jobs?.applications)
+    ? clone(source.jobs.applications).slice(-12)
+    : [];
+  state.jobs.activeApplicationId = typeof source.jobs?.activeApplicationId === "string"
+    ? source.jobs.activeApplicationId
+    : null;
+  state.jobs.lastResult = source.jobs?.lastResult && typeof source.jobs.lastResult === "object"
+    ? clone(source.jobs.lastResult)
+    : null;
+
   const people = {};
   const sourcePeople = source.relationships?.people;
   if (sourcePeople && typeof sourcePeople === "object") {
@@ -293,9 +345,19 @@ export function validateState(candidate) {
       if (!person || typeof person !== "object") continue;
       people[id] = {
         id,
-        name: String(person.name || id),
-        type: String(person.type || "Contact"),
+        name: typeof person.name === "string" && person.name.trim()
+          ? person.name.trim().slice(0, 40)
+          : id,
+        type: typeof person.type === "string" && person.type.trim()
+          ? person.type.trim().toLowerCase().slice(0, 20)
+          : "contact",
         score: clamp(person.score ?? 50),
+        trait: typeof person.trait === "string" && person.trait.trim()
+          ? person.trait.trim().toLowerCase().slice(0, 24)
+          : "grounded",
+        reaction: typeof person.reaction === "string" && person.reaction.trim()
+          ? person.reaction.trim().toLowerCase().slice(0, 24)
+          : "neutral",
       };
     }
   }
@@ -310,6 +372,15 @@ export function validateState(candidate) {
     && typeof source.dailyState.travelContext === "object"
     ? clone(source.dailyState.travelContext)
     : {};
+  const phoneApps = new Set(["home", "jobs", "transport", "business", "people", "life", "time"]);
+  state.settings.phone = {
+    open: Boolean(source.settings?.phone?.open),
+    app: phoneApps.has(source.settings?.phone?.app) ? source.settings.phone.app : "home",
+  };
+  state.timeline.settledDayIds = uniqueStrings(source.timeline?.settledDayIds).slice(-400);
+  state.timeline.lastSummary = source.timeline?.lastSummary && typeof source.timeline.lastSummary === "object"
+    ? clone(source.timeline.lastSummary)
+    : null;
   state.delayedEvents = (Array.isArray(source.delayedEvents) ? source.delayedEvents : [])
     .filter((item) => item && Number.isFinite(Number(item.dueDay)) && item.eventId && item.outcomeId)
     .map((item) => ({
@@ -325,7 +396,8 @@ export function validateState(candidate) {
 }
 
 export function migrateLegacyState(candidate) {
-  if (candidate?.schemaVersion === 8) return validateState(candidate);
+  if (candidate?.schemaVersion === 9) return validateState(candidate);
+  if (candidate?.schemaVersion === 8) return migrateState(candidate);
   const state = createDefaultState();
   const source = candidate && typeof candidate === "object" ? candidate : {};
   const checkedName = validateName(source.name);
@@ -396,14 +468,33 @@ export function migrateLegacyState(candidate) {
   return validateState(state);
 }
 
+export function migrateState(candidate) {
+  if (candidate?.schemaVersion === 9) return validateState(candidate);
+  if (candidate?.schemaVersion === 8) {
+    return validateState({
+      ...clone(candidate),
+      schemaVersion: 9,
+      life: {
+        stage: "adult",
+        school: { step: "complete", choiceIds: [] },
+        examResult: null,
+        ageDays: 0,
+        ended: false,
+        endingSummary: null,
+      },
+    });
+  }
+  return migrateLegacyState(candidate);
+}
+
 export function saveGame(state, storage = globalThis.localStorage) {
   const validated = validateState(state);
-  storage.setItem(SAVE_KEY_V8, JSON.stringify(validated));
+  storage.setItem(SAVE_KEY_V9, JSON.stringify(validated));
   return validated;
 }
 
 export function loadGame(storage = globalThis.localStorage) {
-  const current = storage.getItem(SAVE_KEY_V8);
+  const current = storage.getItem(SAVE_KEY_V9);
   if (current !== null) {
     try {
       return { state: validateState(JSON.parse(current)), status: "loaded", recoveryMessage: "" };
@@ -421,8 +512,8 @@ export function loadGame(storage = globalThis.localStorage) {
     const legacy = storage.getItem(key);
     if (legacy === null) continue;
     try {
-      const state = migrateLegacyState(JSON.parse(legacy));
-      storage.setItem(SAVE_KEY_V8, JSON.stringify(state));
+      const state = migrateState(JSON.parse(legacy));
+      storage.setItem(SAVE_KEY_V9, JSON.stringify(state));
       return { state, status: "migrated", recoveryMessage: "" };
     } catch {
       storage.setItem(CORRUPT_BACKUP_KEY, legacy);
