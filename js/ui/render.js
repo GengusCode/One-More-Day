@@ -1,6 +1,7 @@
 import { formatRand } from "../data/economy.js";
 import { validateName } from "../core/state.js";
 import { BUSINESS_UPGRADES } from "../systems/business.js";
+import { buildPhoneModel, renderPhone } from "./phone.js";
 
 const GENDER_IDS = new Set(["man", "woman", "non-binary"]);
 
@@ -173,9 +174,28 @@ function eventMarkup(event) {
     </article>`;
 }
 
+function endingMarkup(summary) {
+  return `
+    <article class="event-card ending-card" aria-labelledby="today-title">
+      <div class="event-card__top"><span class="event-card__icon" aria-hidden="true">🌅</span><p>A LIFE REMEMBERED</p></div>
+      <h2 id="today-title">${escapeText(summary.name)} · age ${escapeText(summary.age)}</h2>
+      <p class="event-card__text">${escapeText(summary.closingLine)}</p>
+      <div class="ending-grid">
+        <div><span>Days lived</span><strong>${escapeText(summary.daysLived)}</strong></div>
+        <div><span>Life's work</span><strong>${escapeText(summary.work)}</strong></div>
+        <div><span>Closest person</span><strong>${escapeText(summary.closestPerson)}</strong></div>
+        <div><span>Net worth</span><strong>${formatRand(summary.netWorth)}</strong></div>
+      </div>
+      <p class="ending-achievement">🏆 ${escapeText(summary.achievement)}</p>
+      <button class="button button--primary button--wide" type="button" data-action="RESET_LIFE">BEGIN A NEW LIFE →</button>
+    </article>`;
+}
+
 function gameMarkup(state, context) {
   const view = buildGameViewModel(state);
-  const panels = getSecondaryPanels(state);
+  const phoneModel = buildPhoneModel(state);
+  const phoneOpen = context.phoneOpen ?? state.settings.phone?.open ?? false;
+  const phoneApp = context.phoneApp ?? state.settings.phone?.app ?? "home";
   return `
     <div class="game-shell">
       <header class="game-header"><div><p class="eyebrow">ONE MORE DAY · SA EDITION</p><p class="welcome">Sharp, ${escapeText(view.playerName)}.</p></div>
@@ -185,10 +205,11 @@ function gameMarkup(state, context) {
         <div class="hud__money"><span>CASH</span><strong id="cashBalance">${view.hud.cash}</strong><div id="moneyFeedback" class="money-feedback" aria-live="polite"></div></div>
         <div><span>ENERGY</span><strong>${view.hud.energy}</strong></div>
       </section>
-      <main class="play-column">${eventMarkup(context.event)}
-        <button class="button button--primary button--wide next-day" type="button" data-action="NEXT_DAY" ${context.canAdvance ? "" : "disabled"}>${escapeText(context.nextLabel || "FINISH TODAY FIRST")}</button>
-        <div class="secondary-stack">${panels.map(panelMarkup).join("")}</div>
+      <main class="play-column">${state.life.ended ? endingMarkup(state.life.endingSummary) : eventMarkup(context.event)}
+        ${state.life.ended ? "" : `<button class="button button--primary button--wide next-day" type="button" data-action="NEXT_DAY" ${context.canAdvance ? "" : "disabled"}>${escapeText(context.nextLabel || "FINISH TODAY FIRST")}</button>
+        <button class="phone-launch" type="button" data-action="OPEN_PHONE" aria-haspopup="dialog"><span aria-hidden="true">📱</span><strong>PHONE</strong><small>${phoneModel.notifications.length ? escapeText(phoneModel.notifications[0].text) : "Apps, people & plans"}</small></button>`}
       </main>
+      ${state.life.ended ? "" : renderPhone({ ...phoneModel, greeting: `Sharp, ${view.playerName}` }, { open: phoneOpen, activeApp: phoneApp })}
       <p class="app-error" role="alert">${escapeText(context.error || "")}</p>
       <p class="sr-only" id="appStatus" aria-live="polite">${escapeText(context.announcement || "")}</p>
     </div>`;
@@ -212,7 +233,7 @@ export function createRenderer({ root, dispatch }) {
     if (!button || !root.contains(button) || button.disabled) return;
     const action = button.dataset.action;
     if (action === "START_LIFE") return;
-    dispatch(action, { id: button.dataset.choice || "", panel: button.dataset.panel || "" });
+    dispatch(action, { id: button.dataset.choice || "", panel: button.dataset.panel || "", app: button.dataset.app || "" });
   };
   const onSubmit = (event) => {
     if (event.target.id !== "newLifeForm") return;
