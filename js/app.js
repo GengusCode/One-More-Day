@@ -1,5 +1,5 @@
 import {
-  SAVE_KEY_V8,
+  createDefaultState,
   createNewLife,
   loadGame,
   saveGame,
@@ -9,6 +9,9 @@ import { createRenderer } from "./ui/render.js";
 import { createMoneyFeedback } from "./ui/money-feedback.js";
 import { buyUpgrade, hireEmployee } from "./systems/business.js";
 import { buyTransportAsset, assignCarForDay } from "./systems/travel.js";
+import { chooseSchoolDecision } from "./systems/life.js";
+import { applyForJob } from "./systems/jobs.js";
+import { fastForward } from "./systems/timeline.js";
 import {
   startDay,
   choosePath,
@@ -132,7 +135,10 @@ async function dispatch(action, payload = {}) {
     try {
       const next = createNewLife(payload);
       await commit(startDay(next));
-      if (!error) screen = "game";
+      if (!error) {
+        seenTransactions.clear();
+        screen = "game";
+      }
     } catch (cause) {
       error = cause instanceof Error ? cause.message : "Check your name and character.";
     }
@@ -146,9 +152,55 @@ async function dispatch(action, payload = {}) {
     return;
   }
   if (action === "RESET_LIFE") {
-    if (!window.confirm("Start a new life? Your v0.8 progress on this device will be cleared.")) return;
-    localStorage.removeItem(SAVE_KEY_V8);
-    location.reload();
+    if (!state.life.ended && !window.confirm("Start a new life? Your v0.9 progress on this device will be cleared.")) return;
+    try {
+      state = saveGame(createDefaultState(), localStorage);
+      seenTransactions.clear();
+      screen = "setup";
+      error = "";
+      render({ focusTarget: "#playerName" });
+    } catch (cause) {
+      console.error("Could not clear ONE MORE DAY", cause);
+      error = "Your saved life could not be cleared. Please try again.";
+      render();
+    }
+    return;
+  }
+  if (["OPEN_PHONE", "CLOSE_PHONE", "OPEN_PHONE_APP"].includes(action)) {
+    const next = structuredClone(state);
+    if (action === "OPEN_PHONE") next.settings.phone = { open: true, app: "home" };
+    if (action === "CLOSE_PHONE") next.settings.phone = { open: false, app: "home" };
+    if (action === "OPEN_PHONE_APP") next.settings.phone = { open: true, app: payload.app || payload.id || "home" };
+    await commit(next);
+    render();
+    return;
+  }
+  if (action === "CHOOSE_SCHOOL") {
+    await commit(chooseSchoolDecision(state, payload.id));
+    render({ focusTarget: "#today-title" });
+    return;
+  }
+  if (action === "APPLY_JOB") {
+    const result = applyForJob(state, payload.id);
+    if (!result.ok) error = result.reason || "That opportunity is not available.";
+    else {
+      const next = structuredClone(result.state);
+      next.settings.phone = { open: false, app: "home" };
+      await commit(next);
+    }
+    render({ focusTarget: "#today-title" });
+    return;
+  }
+  if (action === "FAST_FORWARD") {
+    const days = payload.id === "month" ? 30 : 7;
+    const result = fastForward(state, days);
+    if (result.summary.daysAdvanced === 0) error = result.summary.reason;
+    else {
+      const next = structuredClone(result.state);
+      next.settings.phone = { open: false, app: "home" };
+      await commit(next);
+    }
+    render({ focusTarget: "#today-title" });
     return;
   }
   if (action === "TOGGLE_PANEL" || action === "OPEN_PANEL") {
