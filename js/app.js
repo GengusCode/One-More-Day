@@ -1,0 +1,219 @@
+import {
+  SAVE_KEY_V8,
+  createNewLife,
+  loadGame,
+  saveGame,
+} from "./core/state.js";
+import { isCompatiblePageVersion } from "./core/version.js";
+import { createRenderer } from "./ui/render.js";
+import { createMoneyFeedback } from "./ui/money-feedback.js";
+import { buyUpgrade, hireEmployee } from "./systems/business.js";
+import { buyTransportAsset, assignCarForDay } from "./systems/travel.js";
+import {
+  startDay,
+  choosePath,
+  chooseEvent,
+  chooseTravel,
+  resolveWork,
+  advanceDay,
+  canAdvanceDay,
+  getCurrentDecision,
+  resolveMinigame,
+  resolveUnavailableMinigame,
+} from "./systems/day.js";
+import { start as startChase } from "./minigames/chase-runner.js";
+
+const root = document.getElementById("app");
+const loaded = loadGame(localStorage);
+const pageVersion = document.documentElement.dataset.gameVersion;
+const versionCompatible = isCompatiblePageVersion(pageVersion, loaded.state.schemaVersion);
+let state = loaded.state;
+let screen = "setup";
+let committing = false;
+let error = versionCompatible
+  ? ""
+  : "A game update is still loading. Refresh this page before making a choice.";
+let moneyFeedback = null;
+let chaseLaunching = false;
+const seenTransactions = new Set(state.finances.transactions.map((item) => item.id));
+
+const renderer = createRenderer({ root, dispatch });
+
+function render(extra = {}) {
+  moneyFeedback?.destroy();
+  moneyFeedback = null;
+  renderer.render(state, {
+    screen,
+    hasSave: Boolean(state.profile.name),
+    recoveryMessage: loaded.status === "corrupt" && screen === "setup" ? loaded.recoveryMessage : "",
+    error,
+    event: getCurrentDecision(state),
+    canAdvance: canAdvanceDay(state),
+    nextLabel: canAdvanceDay(state)
+      ? "NEXT DAY →"
+      : state.dailyState.phase === "path"
+        ? "CHOOSE A PATH FIRST"
+        : state.dailyState.phase === "minigame"
+          ? "FINISH THE CHASE"
+          : "FINISH TODAY FIRST",
+    ...extra,
+  });
+  if (screen === "game") {
+    const host = root.querySelector("#moneyFeedback");
+    const balanceNode = root.querySelector("#cashBalance");
+    if (host && balanceNode) {
+      moneyFeedback = createMoneyFeedback({
+        host,
+        balanceNode,
+        reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches,
+      });
+      state.finances.transactions.forEach((transaction) => {
+        if (seenTransactions.has(transaction.id)) return;
+        seenTransactions.add(transaction.id);
+        moneyFeedback.enqueue(transaction);
+      });
+    }
+    maybeLaunchChase();
+  }
+}
+
+function maybeLaunchChase() {
+  const chase = state.dailyState.chase;
+  if (
+    chaseLaunching
+    || state.dailyState.phase !== "minigame"
+    || !chase
+    || chase.status !== "pending"
+  ) return;
+  chaseLaunching = true;
+  startChase({
+    host: root,
+    seed: chase.seed,
+    profile: state.profile,
+    reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches,
+  }).then(async (result) => {
+    chaseLaunching = false;
+    await commit(resolveMinigame(state, result));
+    render();
+  }).catch((cause) => {
+    console.error("Could not start the chase", cause);
+    chaseLaunching = false;
+    error = "The chase could not start, so the thief got away. Your day can continue.";
+    commit(resolveUnavailableMinigame(state)).then(render);
+  });
+}
+
+async function commit(nextState) {
+  if (!versionCompatible) {
+    error = "A game update is still loading. Refresh this page before making a choice.";
+    return false;
+  }
+  committing = true;
+  error = "";
+  try {
+    state = saveGame(nextState, localStorage);
+    return true;
+  } catch (cause) {
+    console.error("Could not save ONE MORE DAY", cause);
+    error = "Your choice could not be saved. Please try again.";
+  } finally {
+    committing = false;
+  }
+}
+
+async function dispatch(action, payload = {}) {
+  if (committing) return;
+  if (!versionCompatible) {
+    error = "A game update is still loading. Refresh this page before making a choice.";
+    render();
+    return;
+  }
+  if (action === "START_LIFE") {
+    try {
+      const next = createNewLife(payload);
+      await commit(startDay(next));
+      if (!error) screen = "game";
+    } catch (cause) {
+      error = cause instanceof Error ? cause.message : "Check your name and character.";
+    }
+    render({ focusTarget: screen === "game" ? "#today-title" : "#setupError" });
+    return;
+  }
+  if (action === "CONTINUE_LIFE") {
+    if (state.dailyState.phase === "morning") await commit(startDay(state));
+    screen = "game";
+    render({ focusTarget: "#today-title" });
+    return;
+  }
+  if (action === "RESET_LIFE") {
+    if (!window.confirm("Start a new life? Your v0.8 progress on this device will be cleared.")) return;
+    localStorage.removeItem(SAVE_KEY_V8);
+    location.reload();
+    return;
+  }
+  if (action === "TOGGLE_PANEL" || action === "OPEN_PANEL") {
+    const panels = new Set(state.settings.openPanels || []);
+    if (action === "OPEN_PANEL") panels.add(payload.panel);
+    else if (panels.has(payload.panel)) panels.delete(payload.panel);
+    else panels.add(payload.panel);
+    const next = structuredClone(state);
+    next.settings.openPanels = [...panels];
+    await commit(next);
+    render();
+    return;
+  }
+  if (action === "CHOOSE_PATH") {
+    await commit(choosePath(state, payload.id));
+    render({ focusTarget: "#today-title" });
+    return;
+  }
+  if (action === "CHOOSE_EVENT") {
+    await commit(chooseEvent(state, state.dailyState.activeEventId, payload.id));
+    render({ focusTarget: "#today-title" });
+    return;
+  }
+  if (action === "CHOOSE_TRAVEL") {
+    await commit(chooseTravel(state, payload.id));
+    render({ focusTarget: "#today-title" });
+    return;
+  }
+  if (action === "RESOLVE_WORK") {
+    await commit(resolveWork(state, payload.id));
+    render({ focusTarget: "#today-title" });
+    return;
+  }
+  if (action === "BUY_UPGRADE") {
+    const result = buyUpgrade(state, payload.id);
+    if (!result.ok) error = "That upgrade is not available right now.";
+    else await commit(result.state);
+    render();
+    return;
+  }
+  if (action === "HIRE_EMPLOYEE") {
+    const result = hireEmployee(state, payload.id);
+    if (!result.ok) error = "You cannot hire that person right now.";
+    else await commit(result.state);
+    render();
+    return;
+  }
+  if (action === "BUY_ASSET") {
+    const result = buyTransportAsset(state, payload.id);
+    if (!result.ok) error = "You cannot buy that asset right now.";
+    else await commit(result.state);
+    render();
+    return;
+  }
+  if (action === "ASSIGN_DRIVER") {
+    const result = assignCarForDay(state, "driver");
+    if (!result.ok) error = "Your car is not available for a driver today.";
+    else await commit(result.state);
+    render();
+    return;
+  }
+  if (action === "NEXT_DAY" && canAdvanceDay(state)) {
+    await commit(advanceDay(state));
+    render({ focusTarget: "#today-title" });
+  }
+}
+
+render();
