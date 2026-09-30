@@ -9,7 +9,9 @@ import {
 } from "./event-deck.js";
 import { startCareer, resolveCareerChoice, settleCareerDay, getCareerDecisionIds } from "./career.js";
 import { startBusiness, resolveOwnerChoice, settleBusinessDay } from "./business.js";
-import { getTravelOptions, resolveTravel, resetDailyTransport } from "./travel.js";
+import { getTravelOptions, resolveTravel, resetDailyTransport, assignCarForDay } from "./travel.js";
+import { advanceLifeCalendar, evaluateLifeEnding, getSchoolDecision } from "./life.js";
+import { resolveJobApplication } from "./jobs.js";
 
 const clone = (value) => (
   typeof structuredClone === "function" ? structuredClone(value) : JSON.parse(JSON.stringify(value))
@@ -244,6 +246,7 @@ function applyEventChoice(state, event, choice) {
 
 export function startDay(state, { random = Math.random } = {}) {
   if (state.dailyState.phase !== "morning") return state;
+  if (state.life?.stage === "school-finale") return state;
   let next = resetDailyTransport(state, state.calendar.day);
   next = applyEffects(next, { stats: { energy: 12 } }, { source: "morning-recovery" }).state;
   const due = resolveDueEvents(next, next.calendar.day);
@@ -251,6 +254,12 @@ export function startDay(state, { random = Math.random } = {}) {
   next.dailyState.updates = due.updates.map((item) => item.payload?.result || item.outcomeId);
   if (due.primary) {
     next.dailyState.result = due.primary.payload?.result || due.primary.outcomeId;
+  }
+  for (const dueItem of [due.primary, ...due.updates].filter(Boolean)) {
+    if (dueItem.eventId !== "job-application") continue;
+    const jobResult = resolveJobApplication(next, dueItem.payload?.applicationId || dueItem.outcomeId);
+    next = jobResult.state;
+    if (jobResult.resolved) next.dailyState.result = next.jobs.lastResult?.message || next.dailyState.result;
   }
   if (!hasPath(next)) {
     next.dailyState.phase = "path";
@@ -364,20 +373,107 @@ export function advanceDay(state, { random = Math.random } = {}) {
   let next = clone(state);
   next.calendar.day += 1;
   next.calendar.weekday = next.calendar.weekday === 7 ? 1 : next.calendar.weekday + 1;
+  next = advanceLifeCalendar(next, 1);
+  const milestone = next.life.lastMilestone;
+  next = evaluateLifeEnding(next, { random });
+  if (next.life.ended) return next;
   next = resetDailyState(next);
-  return startDay(next, { random });
+  next = startDay(next, { random });
+  if (milestone?.type === "birthday") next.dailyState.result = milestone.message;
+  return next;
+}
+
+export function settleRoutineDay(state, { random = Math.random, driverMode = false } = {}) {
+  if (!canAdvanceDay(state)) {
+    return { state, transactions: [], interrupted: true, reason: "unfinished-day" };
+  }
+  let next = clone(state);
+  next.calendar.day += 1;
+  next.calendar.weekday = next.calendar.weekday === 7 ? 1 : next.calendar.weekday + 1;
+  next = advanceLifeCalendar(next, 1);
+  const milestone = next.life.lastMilestone;
+  next = evaluateLifeEnding(next, { random });
+  if (next.life.ended) {
+    return { state: next, transactions: [], interrupted: true, reason: "life-ending" };
+  }
+  next = resetDailyState(next);
+  next = resetDailyTransport(next, next.calendar.day);
+
+  if (milestone?.type === "birthday") {
+    const interruptedState = startDay(next, { random });
+    interruptedState.dailyState.result = milestone.message;
+    return { state: interruptedState, transactions: [], interrupted: true, reason: "birthday" };
+  }
+
+  const highImpactDue = next.delayedEvents
+    .filter((item) => Number(item.dueDay) <= next.calendar.day)
+    .sort((a, b) => (Number(b.severity) || 0) - (Number(a.severity) || 0))
+    .find((item) => item.eventId === "job-application" || item.payload?.highImpact || Number(item.severity) >= 3);
+  if (highImpactDue) {
+    const interruptedState = startDay(next, { random });
+    return {
+      state: interruptedState,
+      transactions: [],
+      interrupted: true,
+      reason: highImpactDue.eventId === "job-application" ? "job-result" : "important-event",
+    };
+  }
+
+  next = applyEffects(next, { stats: { energy: 8 } }, { source: "routine-recovery" }).state;
+  const due = resolveDueEvents(next, next.calendar.day);
+  next = due.state;
+  next.dailyState.updates = due.updates.map((item) => item.payload?.result || item.outcomeId);
+  if (due.primary) next.dailyState.result = due.primary.payload?.result || due.primary.outcomeId;
+
+  const transactions = [];
+  if (driverMode && next.transport.owned.includes("car")) {
+    const driver = assignCarForDay(next, "driver", random);
+    if (driver.ok) {
+      next = driver.state;
+      transactions.push(...driver.transactions);
+      if (driver.followUp) next = scheduleDelayedEvent(next, driver.followUp);
+    }
+  }
+
+  let status = {};
+  if (isWorkingDay(next) && next.career.active) {
+    const settled = settleCareerDay(next, { day: next.calendar.day, attendance: "present" });
+    next = settled.state;
+    transactions.push(...settled.transactions);
+    status = settled.status;
+  } else if (isWorkingDay(next) && next.business.active) {
+    const settled = settleBusinessDay(next, { day: next.calendar.day, operating: true, random });
+    next = settled.state;
+    transactions.push(...settled.transactions);
+    status = settled.status;
+  }
+
+  next = applyEffects(next, { stats: { energy: -3, happiness: -1 } }, { source: "routine-day" }).state;
+  next = finishDay(next);
+  const reason = status.promotion ? "promotion"
+    : status.dismissed ? "dismissed"
+      : status.reason === "closed" ? "business-closed"
+        : next.stats.health <= 15 ? "critical-health"
+          : next.finances.cash < 0 ? "low-cash"
+            : "";
+  if (reason) next.dailyState.result = reason === "promotion"
+    ? `Promotion: you are now ${next.career.role}.`
+    : reason === "dismissed" ? "Your employment has ended."
+      : reason === "business-closed" ? "Your business has closed."
+        : reason === "critical-health" ? "Your health needs your attention."
+          : "Your cash has dropped below zero.";
+  return { state: next, transactions, interrupted: Boolean(reason), reason };
 }
 
 export function getCurrentDecision(state) {
+  const schoolDecision = getSchoolDecision(state);
+  if (schoolDecision) return schoolDecision;
   if (state.dailyState.phase === "path") {
     return {
-      icon: "🧭", kicker: "CHOOSE YOUR START", title: "How will you build your future?",
-      text: "Your ordinary work will settle automatically. Big decisions will still be yours.",
+      icon: "📱", kicker: "ADULT LIFE", title: "Your first opportunity is waiting",
+      text: "Open Jobs on your phone. Pick one path now; you can build it from the ground up.",
       choices: [
-        { id: "car-wash", label: "Start a car-wash service", detail: "Build equipment, crew and sites.", action: "CHOOSE_PATH" },
-        { id: "moving-service", label: "Start a moving & helping service", detail: "Turn hard work into contracts.", action: "CHOOSE_PATH" },
-        { id: "buy-resell", label: "Start buying & reselling", detail: "Learn stock, sourcing and delivery.", action: "CHOOSE_PATH" },
-        { id: "office", label: "Join a corporate office", detail: "Navigate work, people and promotions.", action: "CHOOSE_PATH" },
+        { id: "jobs", label: "Open Jobs", detail: "See the opportunities available to you.", action: "OPEN_PHONE_APP" },
       ],
     };
   }
@@ -395,6 +491,7 @@ export function getCurrentDecision(state) {
     const order = state.dailyState.choiceOrder;
     return {
       ...event,
+      result: state.dailyState.result || event.result,
       choices: order
         .map((id) => event.choices.find((item) => item.id === id))
         .filter(Boolean)
@@ -428,6 +525,12 @@ export function getCurrentDecision(state) {
       icon: "📱", kicker: "THEFT CHASE", title: "The thief is moving.",
       text: "The runner challenge is loading.",
       choices: [],
+    };
+  }
+  if (state.dailyState.phase === "complete" && state.dailyState.result) {
+    return {
+      icon: "✓", kicker: "DAY COMPLETE", title: "That choice is now part of your story",
+      text: state.dailyState.result, choices: [],
     };
   }
   return null;
