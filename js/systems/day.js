@@ -8,6 +8,7 @@ import {
   getChoiceStage,
   resolveDueEvents,
   scheduleDelayedEvent,
+  scheduleChoiceConsequence,
 } from "./event-deck.js";
 import { startCareer, resolveCareerChoice, settleCareerDay } from "./career.js";
 import { startBusiness, resolveOwnerChoice, settleBusinessDay } from "./business.js";
@@ -74,16 +75,6 @@ function applyDomainEffects(state, effects = {}) {
   return { state: applied.state, transactions: applied.transactions };
 }
 
-function scheduleChoiceDelay(state, eventId, choice) {
-  if (!choice?.delayed) return state;
-  return scheduleDelayedEvent(state, {
-    dueDay: state.calendar.day + Number(choice.delayed.days || 1),
-    eventId,
-    outcomeId: choice.delayed.outcomeId + "-" + state.calendar.day,
-    severity: choice.delayed.severity || 1,
-    payload: choice.delayed,
-  });
-}
 
 function setHeadline(state, event, random) {
   const next = clone(state);
@@ -245,7 +236,7 @@ function finalizeHeadline(state, event, choice) {
   return beginWork(next);
 }
 
-function applyEventChoice(state, event, choice) {
+function applyEventChoice(state, event, choice, random) {
   let next = clone(state);
   if (event.id === "stokvel-pressure" && ["full-stokvel", "partial-stokvel"].includes(choice.id)) {
     const contribution = contributeStokvel(next, choice.id === "full-stokvel" ? 180 : 80);
@@ -253,7 +244,7 @@ function applyEventChoice(state, event, choice) {
     next = contribution.state;
   }
   next = applyDomainEffects(next, choice.effects || {}).state;
-  next = scheduleChoiceDelay(next, event.id, choice);
+  next = scheduleChoiceConsequence(next, event.id, choice, random);
   next.dailyState.result = choice.result || "";
   return next;
 }
@@ -301,7 +292,7 @@ export function chooseTravel(state, optionId) {
   return drawHeadline(next, Math.random, { excludeTransport: true });
 }
 
-export function chooseEvent(state, eventId, choiceId) {
+export function chooseEvent(state, eventId, choiceId, { random = Math.random } = {}) {
   if (state.dailyState.phase === "travel") return chooseTravel(state, choiceId);
   const event = getEventById(eventId);
   if (!event) return state;
@@ -317,12 +308,12 @@ export function chooseEvent(state, eventId, choiceId) {
       next.dailyState.followUpOrder = shuffleIds(followUp.choices, Math.random);
       return next;
     }
-    return finalizeHeadline(applyEventChoice(state, event, choice), event, choice);
+    return finalizeHeadline(applyEventChoice(state, event, choice, random), event, choice);
   }
   if (state.dailyState.phase === "follow-up") {
     const choice = state.dailyState.followUp?.choices?.find((item) => item.id === choiceId);
     if (!choice) return state;
-    return finalizeHeadline(applyEventChoice(state, event, choice), event, choice);
+    return finalizeHeadline(applyEventChoice(state, event, choice, random), event, choice);
   }
   return state;
 }
@@ -333,7 +324,7 @@ export function resolveWork(state, choiceId, { random = Math.random } = {}) {
   if (next.dailyState.phase === "work" && next.dailyState.workDecisionId && choiceId) {
     const result = next.career.active
       ? resolveCareerChoice(next, next.dailyState.workDecisionId, choiceId, { random })
-      : resolveOwnerChoice(next, next.dailyState.workDecisionId, choiceId);
+      : resolveOwnerChoice(next, next.dailyState.workDecisionId, choiceId, { random });
     next = result.state;
     next.dailyState.result = result.status?.result || next.dailyState.result;
   }

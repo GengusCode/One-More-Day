@@ -1,6 +1,6 @@
 import { applyEffects } from "../core/state.js";
 import { WORK_DECISIONS } from "../data/events.js";
-import { scheduleDelayedEvent } from "./event-deck.js";
+import { scheduleChoiceConsequence } from "./event-deck.js";
 
 const clone = (value) => (
   typeof structuredClone === "function" ? structuredClone(value) : JSON.parse(JSON.stringify(value))
@@ -127,15 +127,7 @@ export function resolveCareerChoice(state, eventId, choiceId, { random = Math.ra
     : { type: "none", formalWarning: false, performanceDelta: 0, score: 0 };
   if (choice.risk) next = applyConsequence(next, consequence, eventId);
   next.career.recentDecisionIds = [...next.career.recentDecisionIds.filter((id) => id !== eventId), eventId].slice(-6);
-  if (choice.delayed) {
-    next = scheduleDelayedEvent(next, {
-      dueDay: next.calendar.day + choice.delayed.days,
-      eventId,
-      outcomeId: choice.delayed.outcomeId + "-" + next.calendar.day,
-      severity: choice.delayed.severity || 1,
-      payload: choice.delayed,
-    });
-  }
+  next = scheduleChoiceConsequence(next, eventId, choice, random);
   return { state: next, status: { valid: true, result: choice.result, consequence }, transactions: applied.transactions };
 }
 

@@ -9,25 +9,22 @@ const adult = () => createDefaultState();
 test('bets accept a custom affordable amount and cannot spend unavailable money', () => {
  const state=adult(); state.finances.cash=137;
  for (const amount of [0,-1,138,Infinity,NaN,'',1.5]) assert.equal(betting.placeBet(state,amount,{random:()=>0.5}).ok,false);
- const lost=betting.placeBet(state,'137',{random:()=>0.02});
+ const lost=betting.placeBet(state,'137',{random:()=>0.9});
  assert.equal(lost.state.finances.cash,0);
  assert.equal(lost.state.betting.lastResult.jackpot,false);
  assert.equal(state.finances.cash,137);
  assert.equal(betting.placeBet(lost.state,1).ok,false);
 });
-test('jackpots have exactly a 2 percent boundary and return 30 times the stake',()=>{
+test('jackpots return 30 times the stake and survive saving',()=>{
  const state=adult(); state.finances.cash=100;
- const won=betting.placeBet(state,7,{random:()=>0.019999});
+ const won=betting.placeBet(state,7,{random:()=>0.001});
  assert.equal(won.state.finances.cash,303);
  assert.equal(won.state.betting.lastResult.payout,210);
  assert.equal(won.state.finances.transactions.length,2);
  const saved=validateState(won.state);
  assert.deepEqual(saved.betting,won.state.betting);
  assert.equal(saved.finances.cash,303);
- let wins=0,total=0;
- for(let i=0;i<10000;i++) {const result=betting.placeBet(state,10,{random:()=>i/10000});wins+=Number(result.state.betting.lastResult.jackpot);total+=result.state.finances.cash-100;}
- assert.equal(wins,200);
- assert.equal(total,-40000,'the house keeps 40 percent over the probability grid');
+
 });
 test('staff limits depend on the business and equipment expands capacity',()=>{
  for (const [id,limit] of [['buy-resell',1],['car-wash',2],['moving-service',3]]) {
@@ -53,12 +50,12 @@ test('obstacles are visible well before collision and align with the runner when
  assert.equal(snapshot.visibleObstacles[0].depth,0.83);
  advanceChase(model,700);assert.equal(getChaseSnapshot(model).visibleObstacles.length,0);
 });
-test('Betway phone screen exposes a custom amount, all-in action and clear odds',()=>{
+test('Betway phone screen exposes a custom amount, all-in action and visible reels',()=>{
  const model=buildPhoneModel(adult());
  const screen=renderPhone(model,{open:true,activeApp:'betway'});
  assert.match(screen,/name="betAmount"/);
  assert.match(screen,/data-action="BET_ALL"/);
- assert.match(screen,/2%/);
+ assert.match(screen,/slot-reel/);
  const owner=startBusiness(adult(),'buy-resell');owner.business.staff=[{id:'one',wage:80}];
  assert.equal(buildPhoneModel(owner).apps.find(app=>app.id==='business').cards[0].actions.find(action=>action.action==='HIRE_EMPLOYEE').disabled,true);
 });

@@ -1,3 +1,4 @@
+import { STORY_EVENTS, STORY_WORK_DECISIONS } from "./story-events.js";
 const choice = (id, label, result, effects = {}, extra = {}) => ({ id, label, result, effects, ...extra });
 
 const EVERYDAY_EVENTS = [
@@ -113,6 +114,7 @@ const EVERYDAY_EVENTS = [
 
 export const EVENTS = Object.freeze([
   ...EVERYDAY_EVENTS,
+  ...STORY_EVENTS,
   {
     id: "taxi-full", deck: "transport", icon: "🚐", kicker: "MORNING RUSH",
     title: "The taxi is full. The conductor says there is space.",
@@ -354,6 +356,7 @@ export const EVENTS = Object.freeze([
 ]);
 
 export const WORK_DECISIONS = Object.freeze([
+  ...STORY_WORK_DECISIONS,
   { id: "career-boundaries", path: "career", topic: "workload", title: "Messages arrive after your shift", choices: [
     choice("set-boundary", "Reply with a plan for tomorrow", "You are clear about when the work will be done.", { career: { readiness: 4 }, stats: { energy: 4 } }),
     choice("stay-online", "Stay online to sort it out", "The task gets done, but your evening disappears.", { career: { boss: 3, performance: 2 }, stats: { energy: -8, happiness: -3 } }),

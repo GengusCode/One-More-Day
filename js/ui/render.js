@@ -198,7 +198,7 @@ function endingMarkup(summary) {
 
 function gameMarkup(state, context) {
   const view = buildGameViewModel(state);
-  const phoneModel = buildPhoneModel(state);
+  const phoneModel = buildPhoneModel(state, { slotsSpinning: context.slotsSpinning });
   const phoneOpen = context.phoneOpen ?? state.settings.phone?.open ?? false;
   const phoneApp = context.phoneApp ?? state.settings.phone?.app ?? "home";
   return `
@@ -211,9 +211,9 @@ function gameMarkup(state, context) {
         <div><span>ENERGY</span><strong>${view.hud.energy}</strong></div>
       </section>
       <section class="personal-stats" aria-label="Personal stats">
-        ${["health", "happiness", "knowledge", "social", "reputation"].map((key) => `<div><span>${key.toUpperCase()}</span><strong>${view.hud[key]}<small>/100</small></strong></div>`).join("")}
+        ${["health", "happiness", "knowledge", "social", "reputation"].map((key) => `<div class="stat-tile stat-tile--${key}"><span>${key.toUpperCase()}</span><strong>${view.hud[key]}<small>/100</small></strong><div class="stat-meter" aria-hidden="true"><i style="width:${Math.max(0, Math.min(100, Number(state.stats[key]) || 0))}%"></i></div></div>`).join("")}
       </section>
-      <main class="play-column">${state.life.ended ? endingMarkup(state.life.endingSummary) : eventMarkup(context.event)}
+      <main class="play-column">${(state.dailyState.updates || []).length ? `<section class="life-callbacks" aria-label="Earlier choices coming back"><strong>YOUR EARLIER CHOICES</strong>${state.dailyState.updates.slice(0,3).map(text=>`<p>${escapeText(text)}</p>`).join("")}</section>` : ""}${state.life.ended ? endingMarkup(state.life.endingSummary) : eventMarkup(context.event)}
         ${state.life.ended ? "" : `<button class="button button--primary button--wide next-day" type="button" data-action="NEXT_DAY" ${context.canAdvance ? "" : "disabled"}>${escapeText(context.nextLabel || "FINISH TODAY FIRST")}</button>
         <button class="phone-launch" type="button" data-action="OPEN_PHONE" aria-haspopup="dialog"><span aria-hidden="true">📱</span><strong>PHONE</strong><small>${phoneModel.notifications.length ? escapeText(phoneModel.notifications[0].text) : "Apps, people & plans"}</small></button>`}
       </main>

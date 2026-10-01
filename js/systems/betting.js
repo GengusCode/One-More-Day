@@ -6,10 +6,20 @@ export function placeBet(state, amount, { random = Math.random } = {}) {
     return { state, ok: false, reason: 'Enter a whole-rand amount between R1 and your available cash.' };
   }
   let next = applyEffects(state, { cash: -stake }, { source: 'betway-stake' }).state;
-  const jackpot = random() < 0.02;
-  const payout = jackpot ? stake * 30 : 0;
-  if (payout) next = applyEffects(next, { cash: payout }, { source: 'betway-jackpot' }).state;
-  next.betting.lastResult = { stake, jackpot, payout, day: next.calendar.day };
+  const setting = random();
+  const jackpotChance = 0.006 + setting * 0.012;
+  const bigChance = 0.02 + setting * 0.015;
+  const smallChance = 0.05 + setting * 0.04;
+  const roll = random();
+  const multiplier = roll < jackpotChance ? 30 : roll < jackpotChance + bigChance ? 5 : roll < jackpotChance + bigChance + smallChance ? 2 : 0;
+  const jackpot = multiplier === 30;
+  const payout = stake * multiplier;
+  const symbols = ['🍒', '🍋', '🔔', '💎', '7️⃣'];
+  const index = Math.min(symbols.length - 1, Math.floor(random() * symbols.length));
+  const symbol = multiplier === 30 ? '7️⃣' : multiplier === 5 ? '💎' : '🍒';
+  const reels = multiplier ? [symbol, symbol, symbol] : [symbols[index], symbols[(index + 1) % symbols.length], symbols[(index + 3) % symbols.length]];
+  if (payout) next = applyEffects(next, { cash: payout }, { source: jackpot ? 'betway-jackpot' : 'betway-win' }).state;
+  next.betting.lastResult = { stake, jackpot, payout, multiplier, reels, day: next.calendar.day };
   next.betting.totalStaked += stake;
   next.betting.totalPaid += payout;
   next.betting.rounds += 1;

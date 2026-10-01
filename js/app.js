@@ -35,6 +35,7 @@ const versionCompatible = isCompatiblePageVersion(pageVersion, loaded.state.sche
 let state = loaded.state;
 let screen = "setup";
 let committing = false;
+let slotsSpinning = false;
 let error = versionCompatible
   ? ""
   : "A game update is still loading. Refresh this page before making a choice.";
@@ -49,6 +50,7 @@ function render(extra = {}) {
   moneyFeedback = null;
   renderer.render(state, {
     screen,
+    slotsSpinning,
     hasSave: Boolean(state.profile.name),
     recoveryMessage: loaded.status === "corrupt" && screen === "setup" ? loaded.recoveryMessage : "",
     error,
@@ -127,7 +129,7 @@ async function commit(nextState) {
 }
 
 async function dispatch(action, payload = {}) {
-  if (committing) return;
+  if (committing || slotsSpinning) return;
   if (!versionCompatible) {
     error = "A game update is still loading. Refresh this page before making a choice.";
     render();
@@ -238,8 +240,13 @@ async function dispatch(action, payload = {}) {
   }
   if (action === "PLACE_BET" || action === "BET_ALL") {
     const result = placeBet(state, action === "BET_ALL" ? state.finances.cash : payload.amount);
-    if (!result.ok) error = result.reason;
-    else await commit(result.state);
+    if (!result.ok) { error = result.reason; render(); return; }
+    const saved = await commit(result.state);
+    if (!saved) { render(); return; }
+    slotsSpinning = true;
+    render();
+    await new Promise(resolve => setTimeout(resolve, matchMedia("(prefers-reduced-motion: reduce)").matches ? 150 : 1200));
+    slotsSpinning = false;
     render();
     return;
   }

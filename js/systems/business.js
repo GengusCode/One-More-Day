@@ -1,7 +1,7 @@
 import { applyEffects, calculateNetWorth } from "../core/state.js";
 import { ECONOMY } from "../data/economy.js";
 import { WORK_DECISIONS } from "../data/events.js";
-import { scheduleDelayedEvent } from "./event-deck.js";
+import { scheduleChoiceConsequence } from "./event-deck.js";
 
 const clone = (value) => (
   typeof structuredClone === "function" ? structuredClone(value) : JSON.parse(JSON.stringify(value))
@@ -98,7 +98,7 @@ export function hireEmployee(state, roleId) {
   return { state: next, ok: true, reason: "" };
 }
 
-export function resolveOwnerChoice(state, eventId, choiceId) {
+export function resolveOwnerChoice(state, eventId, choiceId, { random = Math.random } = {}) {
   const event = WORK_DECISIONS.find((item) => item.id === eventId && item.path === "business");
   const choice = event?.choices.find((item) => item.id === choiceId);
   if (!choice) return { state, status: { valid: false }, transactions: [] };
@@ -108,15 +108,7 @@ export function resolveOwnerChoice(state, eventId, choiceId) {
   const applied = applyEffects(next, choice.effects || {}, { source: eventId });
   next = applied.state;
   next.business.completedDecisionIds.push(eventId);
-  if (choice.delayed) {
-    next = scheduleDelayedEvent(next, {
-      dueDay: next.calendar.day + choice.delayed.days,
-      eventId,
-      outcomeId: choice.delayed.outcomeId + "-" + next.calendar.day,
-      severity: choice.delayed.severity || 1,
-      payload: choice.delayed,
-    });
-  }
+  next = scheduleChoiceConsequence(next, eventId, choice, random);
   return { state: next, status: { valid: true, result: choice.result }, transactions: applied.transactions };
 }
 

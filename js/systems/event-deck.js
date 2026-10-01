@@ -68,6 +68,21 @@ export function scheduleDelayedEvent(state, item) {
   return next;
 }
 
+export function scheduleChoiceConsequence(state, eventId, choice, random = Math.random) {
+  const delay = choice?.delayed;
+  if (!delay) return state;
+  const [min, max] = delay.daysRange || [Number(delay.days || 1), Number(delay.days || 1)];
+  const days = min === max ? min : min + Math.floor(random() * (max - min + 1));
+  const outcome = delay.outcomes?.length ? delay.outcomes[Math.min(delay.outcomes.length - 1, Math.floor(random() * delay.outcomes.length))] : {};
+  return scheduleDelayedEvent(state, {
+    dueDay: state.calendar.day + days,
+    eventId,
+    outcomeId: delay.outcomeId + "-" + choice.id + "-" + state.calendar.day,
+    severity: delay.severity || 1,
+    payload: { ...clone(delay), ...clone(outcome) },
+  });
+}
+
 export function resolveDueEvents(state, day) {
   let next = clone(state);
   const resolved = new Set(next.eventHistory.resolvedOutcomeIds || []);

@@ -144,24 +144,29 @@ function timeApp(state) {
   };
 }
 
-function betwayApp(state) {
+function betwayApp(state, { slotsSpinning = false } = {}) {
   const last = state.betting.lastResult;
-  const unavailable = state.life.stage === "school-finale" || state.life.ended || state.finances.cash < 1;
+  const unavailable = slotsSpinning || state.life.stage === "school-finale" || state.life.ended || state.finances.cash < 1;
   return { summary: `Cash ${formatRand(state.finances.cash)}`, cards: [{
-    id: "betway", title: "Try your luck", icon: "🎰", badge: "Game money only",
-    text: `2% jackpot chance · 30× total payout · 98% chance to lose your entire stake. ${last ? (last.jackpot ? `Jackpot! ${formatRand(last.payout)} returned on a ${formatRand(last.stake)} bet.` : `You lost ${formatRand(last.stake)}.`) : ""}`,
+    id: "betway", title: "Lucky reels", icon: "🎰", badge: "Game money only",
+    text: slotsSpinning ? "Reels are turning…" : last ? (last.payout ? `${last.jackpot ? 'JACKPOT! ' : 'You matched three! '}${formatRand(last.payout)} returned on a ${formatRand(last.stake)} spin.` : `No match. Your ${formatRand(last.stake)} stake is lost.`) : "Choose your stake and spin. Three matching symbols pay; other spins lose the stake.",
+    slots: { reels: last?.reels || ['🍒', '💎', '7️⃣'], spinning: slotsSpinning, won: !slotsSpinning && last?.payout > 0 },
     bet: { max: Math.max(0, Math.floor(state.finances.cash)), disabled: unavailable },
-    actions: [action("all", "BET_ALL", "Bet all available cash", formatRand(state.finances.cash), unavailable)],
-  }, { id: "betting-record", title: "Your record", icon: "📊", badge: `${state.betting.rounds} bets`, text: `Staked ${formatRand(state.betting.totalStaked)} · Returned ${formatRand(state.betting.totalPaid)} · Net ${formatRand(state.betting.totalPaid - state.betting.totalStaked)}`, actions: [] }] };
+    actions: [action("all", "BET_ALL", "Spin with all available cash", formatRand(state.finances.cash), unavailable)],
+  }, { id: "betting-record", title: "Your record", icon: "📊", badge: `${state.betting.rounds} bets`, text: slotsSpinning ? "Waiting for the reels…" : `Staked ${formatRand(state.betting.totalStaked)} · Returned ${formatRand(state.betting.totalPaid)} · Net ${formatRand(state.betting.totalPaid - state.betting.totalStaked)}`, actions: [] }] };
 }
 
 function renderBetForm(bet) {
-  return `<form class="bet-form" data-form="betway"><label for="betAmount">Your stake (whole rand)</label><input id="betAmount" name="betAmount" type="number" inputmode="numeric" min="1" max="${bet.max}" step="1" placeholder="Enter amount" required ${bet.disabled ? "disabled" : ""}><button class="phone-action" type="submit" ${bet.disabled ? "disabled" : ""}>Place bet</button></form>`;
+  return `<form class="bet-form" data-form="betway"><label for="betAmount">Your stake (whole rand)</label><input id="betAmount" name="betAmount" type="number" inputmode="numeric" min="1" max="${bet.max}" step="1" placeholder="Enter amount" required ${bet.disabled ? "disabled" : ""}><button class="phone-action" type="submit" ${bet.disabled ? "disabled" : ""}>Spin</button></form>`;
 }
 
-export function buildPhoneModel(state) {
+function renderSlots(slots) {
+  return `<div class="slot-machine ${slots.spinning ? 'slot-machine--spinning' : ''} ${slots.won ? 'slot-machine--won' : ''}" role="img" aria-label="${slots.spinning ? 'Reels spinning' : safe(slots.reels.join(' · '))}" aria-busy="${slots.spinning}">${slots.reels.map((symbol,index)=>`<div class="slot-reel slot-reel--${index}">${slots.spinning ? '<div class="slot-strip"><span>🍒</span><span>💎</span><span>7️⃣</span><span>🔔</span><span>🍋</span><span>🍒</span></div>' : `<span>${safe(symbol)}</span>`}</div>`).join('')}</div>`;
+}
+
+export function buildPhoneModel(state, options = {}) {
   const builders = { jobs: jobsApp, transport: transportApp, business: businessApp, people: peopleApp, life: lifeApp, time: timeApp, betway: betwayApp };
-  const apps = APP_ORDER.map((id) => ({ id, ...APP_META[id], ...builders[id](state) }));
+  const apps = APP_ORDER.map((id) => ({ id, ...APP_META[id], ...builders[id](state, options) }));
   const notifications = (state.dailyState.updates || []).map(text => ({ app: "life", text }));
   if (state.stokvel.lastPayout) notifications.push({ app: "life", text: `Last stokvel payout: ${formatRand(state.stokvel.lastPayout.amount)} on day ${state.stokvel.lastPayout.day}` });
   if (state.jobs?.activeApplicationId) notifications.push({ app: "jobs", text: "Application pending" });
@@ -177,7 +182,7 @@ export function renderPhone(model, { open = false, activeApp = "home" } = {}) {
   if (!open) return "";
   const selected = model.apps.find((app) => app.id === activeApp);
   const content = selected
-    ? `<header class="phone-screen__header"><button type="button" data-action="OPEN_PHONE_APP" data-app="home" aria-label="Back to apps">‹</button><span>${safe(selected.icon)}</span><div><strong>${safe(selected.title)}</strong><small>${safe(selected.summary)}</small></div></header><div class="phone-cards">${selected.cards.map((card) => `<article class="phone-card"><div class="phone-card__top"><span>${safe(card.icon)}</span><small>${safe(card.badge)}</small></div><h3>${safe(card.title)}</h3><p>${safe(card.text)}</p>${card.bet ? renderBetForm(card.bet) : ""}<div class="phone-card__actions">${card.actions.map(renderAction).join("")}</div></article>`).join("")}</div>`
+    ? `<header class="phone-screen__header"><button type="button" data-action="OPEN_PHONE_APP" data-app="home" aria-label="Back to apps">‹</button><span>${safe(selected.icon)}</span><div><strong>${safe(selected.title)}</strong><small>${safe(selected.summary)}</small></div></header><div class="phone-cards">${selected.cards.map((card) => `<article class="phone-card"><div class="phone-card__top"><span>${safe(card.icon)}</span><small>${safe(card.badge)}</small></div><h3>${safe(card.title)}</h3><p>${safe(card.text)}</p>${card.slots ? renderSlots(card.slots) : ""}${card.bet ? renderBetForm(card.bet) : ""}<div class="phone-card__actions">${card.actions.map(renderAction).join("")}</div></article>`).join("")}</div>`
     : `<header class="phone-screen__header phone-screen__header--home"><div><strong>${safe(model.greeting || "Your phone")}</strong><small>${model.notifications.length ? safe(model.notifications[0].text) : "Everything you need, tucked away."}</small></div></header><div class="phone-app-grid">${model.apps.map((app) => `<button class="phone-app phone-app--${safe(app.colour)}" type="button" data-action="OPEN_PHONE_APP" data-app="${safe(app.id)}"><span class="phone-app__icon">${safe(app.icon)}</span><strong>${safe(app.title)}</strong><small>${safe(app.summary)}</small></button>`).join("")}</div>`;
   return `<div class="phone-overlay" role="dialog" aria-modal="true" aria-label="Phone"><button class="phone-overlay__backdrop" type="button" data-action="CLOSE_PHONE" aria-label="Close phone"></button><section class="phone-device"><div class="phone-device__speaker"></div><button class="phone-close" type="button" data-action="CLOSE_PHONE" aria-label="Close phone">×</button><div class="phone-screen">${content}</div><div class="phone-device__home" aria-hidden="true"></div></section></div>`;
 }
