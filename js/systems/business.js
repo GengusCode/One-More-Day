@@ -75,9 +75,16 @@ export function buyUpgrade(state, upgradeId) {
   return { state: next, ok: true, reason: "", transactions: paid.transactions };
 }
 
+export function getStaffLimit(state) {
+  const base = { "buy-resell": 1, "car-wash": 2, "moving-service": 3 }[state.business.id] || 0;
+  const equipment = state.assets.ownedUpgradeIds.filter(id => BUSINESS_UPGRADES[id]?.businessId === state.business.id).length;
+  return base + equipment + Math.min(2, state.business.premises.length) * 3;
+}
+
 export function hireEmployee(state, roleId) {
   const role = EMPLOYEE_ROLES[roleId];
   if (!role || !state.business.active) return { state, ok: false, reason: "unavailable" };
+  if (state.business.staff.length >= getStaffLimit(state)) return { state, ok: false, reason: "staff-limit" };
   const next = clone(state);
   next.business.staff.push({
     id: "employee-" + (next.business.staff.length + 1),

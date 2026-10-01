@@ -54,6 +54,7 @@ export function createDefaultState() {
     },
     household: { lastSettledDay: 0, lastCost: 0 },
     stokvel: { balance: 0, contributions: [], lastPaidCycle: -1, lastPayout: null },
+    betting: { lastResult: null, totalStaked: 0, totalPaid: 0, rounds: 0 },
     finances: {
       cash: 350,
       netWorth: 350,
@@ -388,7 +389,7 @@ export function validateState(candidate) {
     && typeof source.dailyState.travelContext === "object"
     ? clone(source.dailyState.travelContext)
     : {};
-  const phoneApps = new Set(["home", "jobs", "transport", "business", "people", "life", "time"]);
+  const phoneApps = new Set(["home", "jobs", "transport", "business", "people", "life", "time", "betway"]);
   state.settings.phone = {
     open: Boolean(source.settings?.phone?.open),
     app: phoneApps.has(source.settings?.phone?.app) ? source.settings.phone.app : "home",

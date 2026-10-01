@@ -171,3 +171,5 @@ body{
 .ending-grid span{color:#748078;font-size:.66rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em}
 .ending-grid strong{margin-top:4px;font-size:.86rem}
 .ending-achievement{padding:12px 14px;border-radius:14px;background:#fff0b8;color:#654a00;font-weight:800}
+
+.bet-form{display:grid;gap:10px;margin-block:14px}.bet-form label{font-weight:700;font-size:.85rem}.bet-form input{width:100%;min-height:48px;padding:10px 12px;border:1px solid #647367;border-radius:12px;background:#11251b;color:#fff;font-size:1rem}.bet-form input:focus-visible{outline:3px solid #8ae7a2;outline-offset:2px}.chase-progress{width:min(100%,480px);height:12px;accent-color:#66e0a2}.chase-status{max-width:480px;font-size:.9rem}

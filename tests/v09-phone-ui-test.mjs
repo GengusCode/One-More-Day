@@ -32,7 +32,7 @@ assert.ok(!beforeDecision.includes("guardian"), "relationship scores stay on the
 assert.doesNotMatch(root.html, /decision--feature/);
 
 const phone = buildPhoneModel(life);
-assert.deepEqual(phone.apps.map((app) => app.id), ["jobs", "transport", "business", "people", "life", "time"]);
+assert.deepEqual(phone.apps.map((app) => app.id), ["jobs", "transport", "business", "people", "life", "time", "betway"]);
 const schoolJobs = phone.apps.find((app) => app.id === "jobs").cards;
 assert.deepEqual(schoolJobs.map((card) => card.id), ["finish-school"]);
 assert.deepEqual(schoolJobs[0].actions, [], "school players cannot apply before receiving an exam result");

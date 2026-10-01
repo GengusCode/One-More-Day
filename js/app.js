@@ -1,3 +1,4 @@
+import { placeBet } from "./systems/betting.js";
 import { contributeStokvel } from "./systems/household.js";
 import {
   createDefaultState,
@@ -235,6 +236,13 @@ async function dispatch(action, payload = {}) {
     render({ focusTarget: "#today-title" });
     return;
   }
+  if (action === "PLACE_BET" || action === "BET_ALL") {
+    const result = placeBet(state, action === "BET_ALL" ? state.finances.cash : payload.amount);
+    if (!result.ok) error = result.reason;
+    else await commit(result.state);
+    render();
+    return;
+  }
   if (action === "PAY_STOKVEL") {
     const result = contributeStokvel(state, payload.id === "partial" ? 80 : 180);
     if (!result.ok) error = "You cannot afford this contribution, or this month is already paid.";
@@ -251,7 +259,7 @@ async function dispatch(action, payload = {}) {
   }
   if (action === "HIRE_EMPLOYEE") {
     const result = hireEmployee(state, payload.id);
-    if (!result.ok) error = "You cannot hire that person right now.";
+    if (!result.ok) error = result.reason === "staff-limit" ? "Your business has reached its staff limit. Buy equipment to expand." : "You cannot hire that person right now.";
     else await commit(result.state);
     render();
     return;

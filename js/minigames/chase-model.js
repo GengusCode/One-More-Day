@@ -36,7 +36,7 @@ export function requestLaneMove(model, direction) {
 function playerLane(model) {
   if (model.transitionMs <= 0) return model.lane;
   const progress = 1 - model.transitionMs / model.laneChangeMs;
-  return model.lane + (model.targetLane - model.lane) * progress;
+  return model.lane + (model.targetLane - model.lane) * progress * progress * (3 - 2 * progress);
 }
 
 function collides(model) {
@@ -86,6 +86,12 @@ export function getChaseSnapshot(model) {
     elapsedMs: model.elapsedMs,
     durationMs: model.durationMs,
     distance: Math.round(model.elapsedMs / model.durationMs * 100),
+    visibleObstacles: model.sequence.filter(item => item.startMs - 1800 <= model.elapsedMs && model.elapsedMs < item.clearMs).map(item => ({
+      ...item,
+      depth: model.elapsedMs < item.startMs
+        ? 0.83 * (model.elapsedMs - item.startMs + 1800) / 1800
+        : 0.83 + 0.25 * (model.elapsedMs - item.startMs) / Math.max(1, item.clearMs - item.startMs),
+    })),
     activeObstacles: model.sequence.filter((item) => item.startMs <= model.elapsedMs && model.elapsedMs < item.clearMs),
     result: model.result,
   };

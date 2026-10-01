@@ -244,6 +244,11 @@ export function createRenderer({ root, dispatch }) {
     dispatch(action, { id: button.dataset.choice || "", panel: button.dataset.panel || "", app: button.dataset.app || "" });
   };
   const onSubmit = (event) => {
+    if (event.target.dataset.form === "betway") {
+      event.preventDefault();
+      dispatch("PLACE_BET", { amount: event.target.elements.betAmount.value });
+      return;
+    }
     if (event.target.id !== "newLifeForm") return;
     event.preventDefault();
     updateSetupValidity();

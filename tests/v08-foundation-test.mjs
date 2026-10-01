@@ -50,12 +50,12 @@ test("game view model exposes personal stats without relationship scores", () =>
   assert.equal("netWorth" in view.hud, false);
 });
 
-test("secondary systems move into six phone apps", () => {
+test("secondary systems stay in phone apps", () => {
   const state = createNewLife({ name: "Ayesha", gender: "woman" });
   const model = buildPhoneModel(state);
   assert.deepEqual(
     model.apps.map(({ id }) => id),
-    ["jobs", "transport", "business", "people", "life", "time"],
+    ["jobs", "transport", "business", "people", "life", "time", "betway"],
   );
 });
 

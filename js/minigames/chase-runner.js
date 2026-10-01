@@ -15,83 +15,93 @@ export function controlDirection(key) {
   return 0;
 }
 
+function drawPerson(context, x, feetY, scale, colour, time, reducedMotion) {
+  const stride = reducedMotion ? 0.2 : Math.sin(time / 95);
+  const bob = reducedMotion ? 0 : Math.abs(Math.sin(time / 95)) * 3 * scale;
+  const y = feetY - bob;
+  context.fillStyle = "rgba(0,0,0,.25)";
+  context.beginPath(); context.arc(x, feetY + 2, 13 * scale, 0, Math.PI * 2); context.fill();
+  const limb = (points, colour, thickness) => {
+    context.strokeStyle = colour; context.lineWidth = thickness * scale; context.lineCap = "round";
+    context.beginPath(); context.moveTo(x + points[0][0] * scale, y + points[0][1] * scale);
+    for (const [px, py] of points.slice(1)) context.lineTo(x + px * scale, y + py * scale);
+    context.stroke();
+  };
+  limb([[-5,-27],[-8 + stride * 9,-14],[-8 + stride * 13,0]], "#172332", 7);
+  limb([[5,-27],[8 - stride * 9,-14],[8 - stride * 13,0]], "#172332", 7);
+  limb([[-9,-48],[-17,-34 + stride * 8],[-10,-28 + stride * 8]], "#b87951", 6);
+  limb([[9,-48],[17,-34 - stride * 8],[10,-28 - stride * 8]], "#b87951", 6);
+  context.fillStyle = colour; context.fillRect(x - 11 * scale, y - 52 * scale, 22 * scale, 29 * scale);
+  context.fillStyle = "#b87951";
+  context.beginPath(); context.arc(x, y - 64 * scale, 10 * scale, 0, Math.PI * 2); context.fill();
+  context.fillStyle = "#20232b"; context.fillRect(x - 10 * scale, y - 73 * scale, 20 * scale, 7 * scale);
+  context.fillStyle = "#f4f6f0";
+  context.fillRect(x - (10 - stride * 13) * scale, y - 2 * scale, 10 * scale, 5 * scale);
+  context.fillRect(x + (3 - stride * 13) * scale, y - 2 * scale, 10 * scale, 5 * scale);
+}
+
 function drawRunner(context, canvas, snapshot, profile, reducedMotion) {
-  const width = canvas.width / (window.devicePixelRatio > 2 ? 2 : Math.max(1, window.devicePixelRatio || 1));
-  const height = canvas.height / (window.devicePixelRatio > 2 ? 2 : Math.max(1, window.devicePixelRatio || 1));
-  context.setTransform(canvas.width / width, 0, 0, canvas.height / height, 0, 0);
+  const dpr = Math.min(2, Math.max(1, window.devicePixelRatio || 1));
+  const width = canvas.width / dpr;
+  const height = canvas.height / dpr;
+  context.setTransform(dpr, 0, 0, dpr, 0, 0);
   context.clearRect(0, 0, width, height);
   const sky = context.createLinearGradient(0, 0, 0, height);
-  sky.addColorStop(0, "#5bc4e8");
-  sky.addColorStop(0.48, "#b3d7c4");
-  sky.addColorStop(0.49, "#554a3c");
-  sky.addColorStop(1, "#171816");
-  context.fillStyle = sky;
-  context.fillRect(0, 0, width, height);
-  const horizon = height * 0.34;
-  context.fillStyle = "#31443b";
-  context.fillRect(0, horizon - 24, width, 28);
-  const roadTop = width * 0.29;
-  const roadBottom = width * 0.05;
-  context.fillStyle = "#2c2c2b";
-  context.beginPath();
-  context.moveTo(roadTop, horizon);
-  context.lineTo(width - roadTop, horizon);
-  context.lineTo(width - roadBottom, height);
-  context.lineTo(roadBottom, height);
-  context.closePath();
-  context.fill();
-  context.strokeStyle = "rgba(255,245,180,.8)";
-  context.lineWidth = 2;
-  for (const fraction of [1 / 3, 2 / 3]) {
-    context.beginPath();
-    context.moveTo(width * (0.5 + (fraction - .5) * .42), horizon);
-    context.lineTo(width * (0.5 + (fraction - .5) * .9), height);
-    context.stroke();
+  sky.addColorStop(0, "#5bc4e8"); sky.addColorStop(0.48, "#b3d7c4"); sky.addColorStop(1, "#171816");
+  context.fillStyle = sky; context.fillRect(0, 0, width, height);
+  const horizon = height * 0.28;
+  context.fillStyle = "#536b59";
+  for (let i = 0; i < 10; i++) context.fillRect(i * width / 10, horizon - 25 - (i % 3) * 14, width / 9, 45);
+  context.fillStyle = "#30343a";
+  context.beginPath(); context.moveTo(width * .29, horizon); context.lineTo(width * .71, horizon);
+  context.lineTo(width * .95, height); context.lineTo(width * .05, height); context.closePath(); context.fill();
+  const laneX = (lane, depth) => width * .5 + (lane - 1) * width * (.09 + depth * .23);
+  const yAt = depth => horizon + depth * (height - horizon);
+  context.strokeStyle = "#e7dbad"; context.lineWidth = 2; context.lineCap = "butt";
+  const scroll = reducedMotion ? 0 : (snapshot.elapsedMs / 1100) % 1;
+  for (let i = 0; i < 8; i++) {
+    const depth = ((i + scroll) / 8) ** 1.6;
+    for (const lane of [.5,1.5]) {
+      context.beginPath(); context.moveTo(laneX(lane, depth), yAt(depth));
+      context.lineTo(laneX(lane, Math.min(1,depth+.045)), yAt(Math.min(1,depth+.045))); context.stroke();
+    }
   }
-  const laneX = (lane, depth) => width * 0.5 + (lane - 1) * (width * (.09 + depth * .23));
-  const positionFor = (obstacle) => {
-    const depth = Math.max(0, Math.min(1, (snapshot.elapsedMs - obstacle.startMs + 850) / 1_500));
-    return { depth, x: laneX(obstacle.lane, depth), y: horizon + depth * (height - horizon) };
-  };
-  for (const obstacle of snapshot.activeObstacles) {
-    const place = positionFor(obstacle);
-    const size = 13 + place.depth * 34;
-    const styles = {
-      pothole: ["#16110e", "◼"],
-      crate: ["#a96732", "▣"],
-      trolley: ["#b7c4c2", "⌗"],
-      pedestrian: ["#253b7d", "●"],
-      "parked-taxi": ["#f1bd1e", "▰"],
-      roadworks: ["#f06435", "▲"],
-    };
-    context.fillStyle = styles[obstacle.type][0];
-    context.fillRect(place.x - size / 2, place.y - size / 2, size, size * .8);
-    context.fillStyle = "#fff";
-    context.font = Math.max(11, size * .65) + "px sans-serif";
-    context.textAlign = "center";
-    context.fillText(styles[obstacle.type][1], place.x, place.y + size * .23);
+  const thiefDepth = .19 + snapshot.distance / 100 * .44;
+  drawPerson(context, laneX(1,thiefDepth), yAt(thiefDepth), .35 + thiefDepth * .5, "#f2b14f", snapshot.elapsedMs + 60, reducedMotion);
+  for (const obstacle of [...snapshot.visibleObstacles].sort((a,b)=>a.depth-b.depth)) {
+    const depth = obstacle.depth;
+    const x = laneX(obstacle.lane, depth), y = yAt(depth);
+    const size = 12 + depth * 43;
+    const blocked = snapshot.elapsedMs >= obstacle.startMs;
+    context.fillStyle = blocked ? "rgba(255,65,60,.32)" : "rgba(255,190,65,.2)";
+    context.fillRect(x-size*.8, y-size*.18, size*1.6, size*.36);
+    if (obstacle.type === "pedestrian") {
+      drawPerson(context,x,y,.25+depth*.55,"#886ac1",0,true);
+    } else if (obstacle.type === "pothole") {
+      context.fillStyle = "#131820";
+      context.beginPath(); context.moveTo(x-size*.6,y); context.lineTo(x-size*.3,y-size*.2);
+      context.lineTo(x+size*.5,y-size*.15); context.lineTo(x+size*.6,y+size*.1); context.closePath(); context.fill();
+    } else if (obstacle.type === "roadworks") {
+      context.fillStyle = "#ff783f";
+      context.beginPath(); context.moveTo(x,y-size);context.lineTo(x-size*.45,y);context.lineTo(x+size*.45,y);context.closePath();context.fill();
+      context.fillStyle="#fff";context.fillRect(x-size*.2,y-size*.45,size*.4,size*.13);
+    } else {
+      context.fillStyle = obstacle.type === "parked-taxi" ? "#f2cb46" : obstacle.type === "crate" ? "#a96732" : "#99b7bc";
+      context.fillRect(x-size*.5,y-size*.8,size,size*.8);
+      context.fillStyle = "#314b63";
+      if(obstacle.type === "parked-taxi") context.fillRect(x-size*.35,y-size*.7,size*.7,size*.25);
+      else {context.strokeStyle="#54412f";context.lineWidth=2;context.beginPath();context.moveTo(x-size*.4,y-size*.7);context.lineTo(x+size*.4,y-size*.1);context.stroke();}
+      context.fillStyle="#121921";
+      context.fillRect(x-size*.4,y-size*.07,size*.2,size*.15);context.fillRect(x+size*.2,y-size*.07,size*.2,size*.15);
+    }
   }
-  const runnerDepth = .83;
-  const runnerX = laneX(snapshot.lane + (snapshot.targetLane - snapshot.lane) * snapshot.laneProgress, runnerDepth);
-  const runnerY = horizon + runnerDepth * (height - horizon);
-  context.fillStyle = profile.gender === "woman" ? "#ef5c8d" : profile.gender === "man" ? "#2467d6" : "#7750d1";
-  context.beginPath();
-  context.arc(runnerX, runnerY - 32, 11, 0, Math.PI * 2);
-  context.fill();
-  context.fillRect(runnerX - 11, runnerY - 19, 22, 31);
-  context.fillStyle = "#1c1d1b";
-  context.fillRect(runnerX - 12, runnerY + 10, 8, 19);
-  context.fillRect(runnerX + 4, runnerY + 10, 8, 19);
-  const thiefY = horizon + 35 + (snapshot.result?.outcome === "caught" ? 90 : 0);
-  context.fillStyle = "#f2b14f";
-  context.beginPath();
-  context.arc(width * .5, thiefY - 10, 8, 0, Math.PI * 2);
-  context.fill();
-  context.fillStyle = "#303031";
-  context.fillRect(width * .5 - 8, thiefY, 16, 22);
-  if (!reducedMotion && snapshot.result?.outcome === "escaped") {
-    context.fillStyle = "rgba(255,108,92,.24)";
-    context.fillRect(0, 0, width, height);
+  const progress = snapshot.laneProgress;
+  const smooth = progress * progress * (3 - 2 * progress);
+  const lane = snapshot.lane + (snapshot.targetLane - snapshot.lane) * smooth;
+  const colour = profile.gender === "woman" ? "#ef5c8d" : profile.gender === "man" ? "#2467d6" : "#7750d1";
+  drawPerson(context,laneX(lane,.83),yAt(.83),1,colour,snapshot.elapsedMs,reducedMotion);
+  if (snapshot.result?.outcome === "escaped") {
+    context.fillStyle = "rgba(255,108,92,.24)"; context.fillRect(0,0,width,height);
   }
 }
 
@@ -157,7 +167,12 @@ export function start({
     left.className = "chase-button"; right.className = "chase-button";
     left.textContent = "← LEFT"; right.textContent = "RIGHT →";
     controls.append(left, right);
-    shell.append(title, status, canvas, controls);
+    const progress = document.createElement("progress");
+    progress.className = "chase-progress";
+    progress.max = 100;
+    progress.value = 0;
+    progress.setAttribute("aria-label", "Chase progress");
+    shell.append(title, status, progress, canvas, controls);
     host.replaceChildren(shell);
     const context = canvas.getContext("2d");
     if (!context) {
@@ -201,9 +216,11 @@ export function start({
       previous = now;
       const snapshot = getChaseSnapshot(model);
       drawRunner(context, canvas, snapshot, profile, reducedMotion);
+      progress.value = snapshot.distance;
+      const approaching = snapshot.visibleObstacles.find(item => item.startMs > snapshot.elapsedMs);
       status.textContent = snapshot.result
         ? (snapshot.result.outcome === "caught" ? "You caught him!" : "Obstacle hit — he gets away.")
-        : "DISTANCE " + snapshot.distance + "%";
+        : "CHASE " + snapshot.distance + "%" + (approaching ? " · " + approaching.type.replaceAll("-", " ").toUpperCase() + " AHEAD: " + ["LEFT", "CENTRE", "RIGHT"][approaching.lane] : " · KEEP RUNNING");
       if (snapshot.result) finish(snapshot.result);
       else frame = requestAnimationFrame(loop);
     };
