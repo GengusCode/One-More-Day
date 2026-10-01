@@ -232,7 +232,7 @@ function beginWork(state) {
 function settleCommute(state) {
   if (state.dailyState.travelResolved || state.dailyState.stayedHome || !state.dailyState.needsTravel) return state;
   const options = getTravelOptions(state,{});
-  const mode = ['bicycle','car','taxi'].find(id=>options.some(item=>item.id===id));
+  const mode = [state.transport.preferredVehicleId,'bicycle','car','sports','fleet-1','fleet-2','fleet-3','taxi'].find(id=>options.some(item=>item.id===id));
   if (!mode) return state;
   const next = resolveTravel(state,mode,{}).state;
   next.dailyState.travelResolved = true;

@@ -1,3 +1,4 @@
+import { getVehicleInventory, getHome } from "./vehicles.js";
 import { applyEffects, calculateNetWorth } from "../core/state.js";
 import { ECONOMY } from "../data/economy.js";
 
@@ -17,12 +18,11 @@ export function getTravelOptions(state, context = {}) {
   const ehailingCost = Math.round(ECONOMY.travel.ehailing.cost * (context.surge ? ECONOMY.travel.ehailing.surgeMultiplier : 1));
   if (state.finances.cash >= ehailingCost) options.push({ id: "ehailing", label: "Book e-hailing", cost: ehailingCost });
   if (state.transport.owned.includes("bicycle") && !context.heavyRain) options.push({ id: "bicycle", label: "Ride your bicycle", cost: 0 });
-  if (
-    state.transport.owned.includes("car")
-    && state.transport.car?.roadworthy !== false
-    && state.transport.dailyAssignment?.mode !== "driver"
-    && state.finances.cash >= ECONOMY.travel.car.fuelCost
-  ) options.push({ id: "car", label: "Drive your car", cost: ECONOMY.travel.car.fuelCost });
+  for (const vehicle of getVehicleInventory(state)) {
+    if (vehicle.location !== 'home' || state.finances.cash < ECONOMY.travel.car.fuelCost) continue;
+    if (vehicle.id === 'car' && (state.transport.car?.roadworthy === false || state.transport.dailyAssignment?.mode === 'driver')) continue;
+    options.push({id: vehicle.id, label: `Drive ${vehicle.name}`, cost: ECONOMY.travel.car.fuelCost});
+  }
   options.push({ id: "stay-home", label: "Stay home", cost: 0 });
   return options;
 }
@@ -31,6 +31,7 @@ export function buyTransportAsset(state, assetId) {
   if (state.transport.owned.includes(assetId)) return { state, ok: false, reason: "owned", transactions: [] };
   const definition = ECONOMY.assets[assetId];
   if (!definition || state.finances.cash < definition.purchaseCost) return { state, ok: false, reason: "cash", transactions: [] };
+  if (assetId === 'car' && getVehicleInventory(state).filter(v => v.location === 'home').length >= getHome(state).spaces && !state.business.active && !state.career.active) return {state, ok: false, reason: 'Home parking is full.', transactions: []};
   const paid = applyEffects(state, { cash: -definition.purchaseCost }, { source: "transport-asset" });
   const next = paid.state;
   next.transport.owned.push(assetId);
@@ -40,7 +41,11 @@ export function buyTransportAsset(state, assetId) {
     name: assetId === "car" ? "Used car" : "Bicycle",
     value: Math.round(definition.purchaseCost * valueRate),
   };
-  if (assetId === "car") next.transport.car = { roadworthy: true, damage: 0 };
+  if (assetId === "car") {
+    next.transport.car = { roadworthy: true, damage: 0 };
+    const full = getVehicleInventory(state).filter(v => v.location === 'home').length >= getHome(state).spaces;
+    next.garage.parking = [...(next.garage.parking || []).filter(v => v.id !== 'car'), {id:'car', location: full ? 'work' : 'home'}];
+  }
   next.finances.netWorth = calculateNetWorth(next);
   return { state: next, ok: true, reason: "", transactions: paid.transactions };
 }
@@ -115,7 +120,8 @@ export function resolveTravel(state, optionId, context = {}) {
     },
     car: { cost: ECONOMY.travel.car.fuelCost, energy: ECONOMY.travel.car.energy },
   };
-  const method = definitions[optionId];
+  const personal = getTravelOptions(state, context).some(option => option.id === optionId && getVehicleInventory(state).some(v => v.id === optionId));
+  const method = ['car','sports'].includes(optionId) || optionId.startsWith('fleet-') ? (personal ? definitions.car : null) : definitions[optionId];
   if (!method) return { state, status: { arrived: false, invalid: true } };
   const applied = applyEffects(state, {
     cash: -(method.cost || 0),
@@ -124,6 +130,6 @@ export function resolveTravel(state, optionId, context = {}) {
       health: method.health || 0,
       happiness: method.happiness || 0,
     },
-  }, { source: "travel-" + optionId });
+  }, { source: "travel-" + optionId, ...(personal ? {label: `Fuel · ${getVehicleInventory(state).find(v=>v.id===optionId).name}`} : {}) });
   return { state: markTravel(applied.state, optionId), status: { arrived: true, stayedHome: false }, transactions: applied.transactions };
 }

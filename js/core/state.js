@@ -54,7 +54,7 @@ export function createDefaultState() {
       reputation: 35,
       luck: 50,
     },
-    household: { lastSettledDay: 0, lastCost: 0 },
+    household: { lastSettledDay: 0, lastCost: 0, homeSize: "starter" },
     stokvel: { balance: 0, contributions: [], lastPaidCycle: -1, lastPayout: null },
     betting: { lastResult: null, pendingResult: null, totalStaked: 0, totalPaid: 0, rounds: 0 },
     finances: {
@@ -106,8 +106,9 @@ export function createDefaultState() {
       car: null,
       dailyAssignment: null,
       lastTravelDay: 0,
+      preferredVehicleId: null,
     },
-    garage: { vehicles: [], history: [] },
+    garage: { vehicles: [], history: [], parking: [] },
     assets: { ownedUpgradeIds: [], items: {} },
     eventHistory: {
       headlineIds: [],
@@ -406,6 +407,9 @@ export function validateState(candidate) {
   state.relationships.people = people;
 
   state.transport.owned = uniqueStrings(source.transport?.owned);
+  state.household.homeSize = ['starter','small','large'].includes(source.household?.homeSize) ? source.household.homeSize : 'starter';
+  state.garage.parking = (Array.isArray(source.garage?.parking) ? source.garage.parking : []).filter(item => item && typeof item.id === 'string' && ['home','work'].includes(item.location)).map(({id,location}) => ({id,location}));
+  state.transport.preferredVehicleId = typeof source.transport?.preferredVehicleId === 'string' ? source.transport.preferredVehicleId : null;
   state.assets.ownedUpgradeIds = uniqueStrings(source.assets?.ownedUpgradeIds);
   // These are chronological logs: repeated IDs must retain their latest position.
   state.eventHistory.headlineIds = (Array.isArray(source.eventHistory?.headlineIds) ? source.eventHistory.headlineIds : [])

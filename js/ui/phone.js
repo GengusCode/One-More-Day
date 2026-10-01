@@ -1,7 +1,7 @@
-import { canBuyBusinessVehicle } from "../systems/vehicles.js";
+import { canBuyBusinessVehicle, getVehicleInventory, getHome, HOME_OPTIONS } from "../systems/vehicles.js";
 import {buildMoneyReport} from "./money-ledger.js";
 import { stokvelMonth } from "../systems/household.js";
-import { formatRand } from "../data/economy.js";
+import { formatRand, ECONOMY } from "../data/economy.js";
 import { BUSINESS_UPGRADES, getStaffLimit } from "../systems/business.js";
 import { getAvailableJobs } from "../systems/jobs.js";
 import { canFastForward } from "../systems/timeline.js";
@@ -65,13 +65,23 @@ function jobsApp(state) {
   return { summary: pending ? "Application pending" : `${opportunities.length} opportunities`, cards };
 }
 
+function vehicleCards(state) {
+  const inventory = getVehicleInventory(state);
+  const home = getHome(state);
+  const occupied = inventory.filter(v => v.location === 'home').length;
+  return inventory.map(v => ({id: `vehicle-${v.id}`, icon: v.kind === 'fleet' ? '🚐' : v.kind === 'sports' ? '🏎️' : '🚗', title: v.name,
+    badge: `${v.location === 'home' ? 'Home garage' : 'Work parking'} · ${v.use === 'business' ? 'Business use' : 'Personal use'}`,
+    text: v.kind === 'fleet' ? 'Vans parked at work earn delivery income. Park one at home for personal travel; fewer working vans mean fewer delivery sales.' : 'Park at home to use this vehicle for your daily commute.',
+    actions: [action(`${v.id}:${v.location === 'home' ? 'work' : 'home'}`, 'SET_VEHICLE_PARKING', v.location === 'home' ? 'Park at work' : 'Park at home', v.location === 'work' ? `${occupied}/${home.spaces} home spaces used` : 'Workplace parking', v.location === 'work' ? occupied >= home.spaces : !state.business.active && !state.career.active),
+      ...(v.location === 'home' ? [action(v.id, 'SELECT_PERSONAL_VEHICLE', state.transport.preferredVehicleId === v.id ? 'Selected for travel' : 'Use for daily travel', `Fuel ${formatRand(ECONOMY.travel.car.fuelCost)} per trip`, state.transport.preferredVehicleId === v.id)] : [])] }));
+}
 function transportApp(state) {
   const owned = state.transport.owned || [];
   return {
-    summary: owned.length ? `${owned.length} owned` : "Taxi life for now",
+    summary: `${getVehicleInventory(state).length} vehicles · ${owned.includes("bicycle") ? "🚲 Bicycle" : "Transport"}`,
     cards: [{
       id: "transport", icon: "🚘", title: owned.length ? "Your transport" : "Get your own wheels",
-      text: owned.length ? owned.join(" · ") : "Owning transport unlocks cheaper and more flexible travel.",
+      text: `${getHome(state).name}: ${getVehicleInventory(state).filter(v=>v.location==='home').length}/${getHome(state).spaces} home parking spaces used.${owned.includes("bicycle") ? " 🚲 Bicycle available." : ""}`,
       badge: state.transport.dailyAssignment?.mode === "driver" ? "Driver working" : "Available",
       actions: [
         ...(!owned.includes("bicycle") ? [action("bicycle", "BUY_ASSET", "Buy bicycle", formatRand(900), state.finances.cash < 900)] : []),
@@ -80,14 +90,14 @@ function transportApp(state) {
           ? [action("driver", "ASSIGN_DRIVER", "Let a driver use the car", "R220–R450 today")]
           : []),
       ],
-    }],
+    }, ...vehicleCards(state)],
   };
 }
 
 function garageCards(state) {
-  const cards = [{ id: "garage", icon: "🚘", title: "Your garage & fleet", badge: `${state.garage.vehicles.filter(v => v.status === 'owned').length} purchases owned`,
+  const cards = [{ id: "garage", icon: "🚘", title: "Your garage & fleet", badge: `${getVehicleInventory(state).length} vehicles · ${getHome(state).spaces} home spaces`,
     text: state.garage.vehicles.length ? "Your purchases stay visible as their story unfolds." : "What will success look like: your dream car or a bigger business? Keep saving or choose a purchase below.",
-    vehicles: state.garage.vehicles, actions: [] }];
+    vehicles: state.garage.vehicles, actions: [] }, ...vehicleCards(state)];
   if (state.business.active && !state.garage.vehicles.some(v => v.id === 'sports')) cards.push({
     id: 'sports-offer', icon: '✨', title: 'Enjoy your success', badge: 'Luxury sports car', art: 'sports',
     text: 'Benefit: +12 happiness and +4 reputation. Cost: R12,000 deposit, then R2,000 every 30 days for 30 payments, plus R60 daily upkeep. No business income. Three consecutive missed payments cause repossession; any loan shortfall stays as debt.',
@@ -148,7 +158,8 @@ function lifeApp(state) {
     cards: [
       {id:"money-history",title:"Recent money movements",icon:"💳",text:"Your latest recorded payments and earnings.",badge:"Money in / out",money,actions:[]},
       ...(state.dailyState.updates || []).map((text,index) => ({ id: `update-${index}`, title: "Life update", icon: "📩", text, badge: "Consequences", actions: [] })),
-      { id: "budget", title: "Living costs", icon: "🏠", text: "Food R25 each day · Electricity R70 every 7 days · Housing R450 every 30 days. Negative cash is debt.", badge: `Cash ${formatRand(state.finances.cash)}`, actions: [] },
+      { id: "budget", title: "Living costs", icon: "🏠", text: "Food R25 each day · Electricity R70 every 7 days. Negative cash is debt.", badge: `Cash ${formatRand(state.finances.cash)}`, actions: [] },
+      {id: 'home-parking', title: getHome(state).name, icon: '🏠', badge: `${getHome(state).spaces} parking spaces`, text: `Housing ${formatRand(getHome(state).rent)} every 30 days. Larger homes have more parking and higher living costs. Moving fees are paid once per move.`, actions: Object.entries(HOME_OPTIONS).filter(([id])=>id !== (state.household.homeSize || 'starter')).map(([id,home])=>action(id,'CHANGE_HOME',`Move to ${home.name}`,`${home.spaces} spaces · Move ${formatRand(home.moveCost)} · Housing ${formatRand(home.rent)}/30 days`,state.finances.cash < home.moveCost || getVehicleInventory(state).filter(v=>v.location==='home').length > home.spaces))},
       { id: "stokvel", title: "Stokvel savings", icon: "🤝", text: `${state.stokvel.lastPayout ? `Last payout ${formatRand(state.stokvel.lastPayout.amount)} on day ${state.stokvel.lastPayout.day}. ` : ""}Saved ${formatRand(state.stokvel.balance)} · Annual payout on day ${(Math.floor((state.calendar.day - 1) / 365) + 1) * 365}. You receive what you contributed; missed months reduce the payout.`, badge: `Month ${stokvelMonth(state.calendar.day) + 1}`, actions: [action("full", "PAY_STOKVEL", "Contribute / top up to R180", "Once each month"), action("partial", "PAY_STOKVEL", "Contribute R80", "Counts toward this month")] },
       stat("Health", state.stats.health, "❤️"), stat("Happiness", state.stats.happiness, "☀️"),
       stat("Knowledge", state.stats.knowledge, "🧠"), stat("Social", state.stats.social, "💬"),
