@@ -215,6 +215,7 @@ function gameMarkup(state, context) {
       </section>
       <main class="play-column">${(state.dailyState.updates || []).length ? `<section class="life-callbacks" aria-label="Earlier choices coming back"><strong>YOUR EARLIER CHOICES</strong>${state.dailyState.updates.slice(0,3).map(text=>`<p>${escapeText(text)}</p>`).join("")}</section>` : ""}${state.life.ended ? endingMarkup(state.life.endingSummary) : eventMarkup(context.event)}
         ${state.life.ended ? "" : `<button class="button button--primary button--wide next-day" type="button" data-action="NEXT_DAY" ${context.canAdvance ? "" : "disabled"}>${escapeText(context.nextLabel || "FINISH TODAY FIRST")}</button>
+        <button class="button button--wide age-year" type="button" data-action="FAST_FORWARD" data-choice="year" ${context.canAdvance ? "" : "disabled"}>AGE ONE YEAR →</button>
         <button class="phone-launch" type="button" data-action="OPEN_PHONE" aria-haspopup="dialog"><span aria-hidden="true">📱</span><strong>PHONE</strong><small>${phoneModel.notifications.length ? escapeText(phoneModel.notifications[0].text) : "Apps, people & plans"}</small></button>`}
       </main>
       ${state.life.ended ? "" : renderPhone({ ...phoneModel, greeting: `Sharp, ${view.playerName}` }, { open: phoneOpen, activeApp: phoneApp })}

@@ -6,6 +6,8 @@ import { applyForJob, getAvailableJobs, resolveJobApplication } from "../js/syst
 import { startCareer } from "../js/systems/career.js";
 
 const fresh = createNewLife({ name: "Karabo", gender: "non-binary" });
+// Existing school saves keep their original three-step opening.
+fresh.life.school.step = "last-morning";
 const opening = getCurrentDecision(fresh);
 
 assert.equal(opening?.kicker, "LAST DAY OF SCHOOL");

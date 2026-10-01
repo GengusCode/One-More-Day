@@ -54,6 +54,7 @@ assert.equal(important.summary.daysAdvanced, 1);
 assert.equal(important.summary.reason, "important-event");
 
 let graduate = createNewLife({ name: "Karabo", gender: "non-binary" });
+graduate.life.school.step = "last-morning";
 graduate = chooseSchoolDecision(graduate, "revise-notes");
 graduate = chooseSchoolDecision(graduate, "steady");
 graduate = chooseSchoolDecision(graduate, "head-home");

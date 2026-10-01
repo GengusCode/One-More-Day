@@ -30,7 +30,7 @@ export function getAvailableJobs(state) {
   const regular = JOB_OPPORTUNITIES.filter((job) => !job.restartOnly);
   const selectedStartup = regular
     .filter((job) => job.type === "business")
-    [(Number(state.life?.examResult?.score) || 0) % 2];
+    [state.stats.knowledge >= 45 ? 1 : 0];
   const candidates = [regular.find((job) => job.type === "career"), selectedStartup];
   if (restart) candidates.push(JOB_OPPORTUNITIES.find((job) => job.restartOnly));
   return candidates.filter(Boolean).slice(0, 3).map((job) => ({ ...job, ...eligibility(state, job) }));

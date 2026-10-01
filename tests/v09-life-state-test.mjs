@@ -24,7 +24,7 @@ const fresh = createNewLife({ name: "Amahle", gender: "woman" });
 assert.equal(fresh.schemaVersion, 9);
 assert.equal(fresh.calendar.age, 18);
 assert.equal(fresh.life.stage, "school-finale");
-assert.equal(fresh.life.school.step, "last-morning");
+assert.equal(fresh.life.school.step, "entrance-test");
 assert.equal(fresh.life.ageDays, 0);
 assert.equal(fresh.life.ended, false);
 

@@ -1,3 +1,4 @@
+import { createEntranceQuiz } from "../data/entrance-test.js";
 import { ECONOMY } from "../data/economy.js";
 import { ensureStarterPeople } from "../systems/people.js";
 
@@ -37,7 +38,7 @@ export function createDefaultState() {
     calendar: { day: 1, age: 18, weekday: 1 },
     life: {
       stage: "adult",
-      school: { step: "complete", choiceIds: [] },
+      school: { step: "complete", choiceIds: [], quiz: null },
       examResult: null,
       ageDays: 0,
       lastMilestone: null,
@@ -170,7 +171,7 @@ export function createNewLife({ name, gender }) {
   state.life = {
     ...state.life,
     stage: "school-finale",
-    school: { step: "last-morning", choiceIds: [] },
+    school: { step: "entrance-test", choiceIds: [], quiz: createEntranceQuiz() },
   };
   return ensureStarterPeople(state, { seed: `${checkedName.value}:${gender}` });
 }

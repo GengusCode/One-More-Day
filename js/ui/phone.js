@@ -133,13 +133,14 @@ function lifeApp(state) {
 function timeApp(state) {
   const week = canFastForward(state, 7);
   const month = canFastForward(state, 30);
+  const year = canFastForward(state, 365);
   const blocked = !week.ok;
   const detail = blocked ? week.reason : "Stops for important moments";
   return {
     summary: "Move ahead without losing the story",
     cards: [{
       id: "time", icon: "🗓️", title: "How far ahead?", text: "Routine days settle automatically. Big moments interrupt the skip.", badge: blocked ? "Unavailable" : "Ready",
-      actions: [action("week", "FAST_FORWARD", "One week", detail, !week.ok), action("month", "FAST_FORWARD", "One month", month.ok ? "Stops for important moments" : month.reason, !month.ok)],
+      actions: [action("week", "FAST_FORWARD", "One week", detail, !week.ok), action("month", "FAST_FORWARD", "One month", month.ok ? "Stops for important moments" : month.reason, !month.ok), action("year", "FAST_FORWARD", "Age one year", "Stops for important moments", !year.ok)],
     }],
   };
 }

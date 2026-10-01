@@ -24,7 +24,7 @@ await parseModule(new URL("js/app.js", root));
 
 assert.ok(visited.has(new URL("js/app.js", root).href));
 assert.ok(visited.has(new URL("js/systems/day.js", root).href));
-assert.ok(visited.has(new URL("js/minigames/chase-runner.js", root).href));
+assert.ok(visited.has(new URL("js/minigames/tap-thief.js", root).href));
 for (const modulePath of [
   "js/data/life.js",
   "js/data/jobs.js",

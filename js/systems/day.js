@@ -142,16 +142,13 @@ function enterTravel(state, context, afterTravel) {
 
 function prepareActivity(state, random) {
   let next = assignWorkDecision(state, random);
-  if (!next.dailyState.needsTravel) return drawHeadline(next, random, { excludeTransport: true });
-  const transportChance = random();
-  if (transportChance < 0.3) return drawHeadline(next, random, { transportOnly: true });
-  const options = getTravelOptions(next, {});
-  if (options.some((item) => item.id === "taxi")) {
-    next = resolveTravel(next, "taxi", {}).state;
-    next.dailyState.travelResolved = true;
-    return drawHeadline(next, random, { excludeTransport: true });
+  if (next.dailyState.needsTravel) {
+    const options = getTravelOptions(next, {});
+    const mode = options.some(item=>item.id==='bicycle') ? 'bicycle' : options.some(item=>item.id==='taxi') ? 'taxi' : null;
+    if (mode) { next = resolveTravel(next,mode,{}).state; next.dailyState.travelResolved = true; }
   }
-  return enterTravel(next, {}, "headline");
+  if (next.dailyState.workDecisionId) { next.dailyState.phase = 'work'; return next; }
+  return drawHeadline(next,random,{excludeTransport:true});
 }
 
 function finishDay(state) {
@@ -177,10 +174,7 @@ function beginWork(state) {
     if (!next.dailyState.settledIds.includes(id)) next.dailyState.settledIds.push(id);
     return finishDay(next);
   }
-  if (next.dailyState.workDecisionId) {
-    next.dailyState.phase = "work";
-    return next;
-  }
+  next.dailyState.workDecisionId = null;
   return resolveWork(next, "");
 }
 
@@ -433,7 +427,7 @@ export function settleRoutineDay(state, { random = Math.random, driverMode = fal
     };
   }
 
-  next = applyEffects(next, { stats: { energy: 8 } }, { source: "routine-recovery" }).state;
+  next = applyEffects(next, { stats: { energy: 12 } }, { source: "routine-recovery" }).state;
   const due = resolveDueEvents(next, next.calendar.day);
   next = due.state;
   next.dailyState.updates = [due.primary, ...due.updates].filter(Boolean).map((item) => item.payload?.result || item.outcomeId);
@@ -468,13 +462,13 @@ export function settleRoutineDay(state, { random = Math.random, driverMode = fal
     status = settled.status;
   }
 
-  next = applyEffects(next, { stats: { energy: -3, happiness: -1 } }, { source: "routine-day" }).state;
+  next = applyEffects(next, { stats: { energy: -3, happiness: next.calendar.day % 30 === 0 ? -1 : 0 } }, { source: "routine-day" }).state;
   next = finishDay(next);
   const reason = status.promotion ? "promotion"
     : status.dismissed ? "dismissed"
       : status.reason === "closed" ? "business-closed"
         : next.stats.health <= 15 ? "critical-health"
-          : next.finances.cash < 0 ? "low-cash"
+          : state.finances.cash >= 0 && next.finances.cash < 0 ? "low-cash"
             : "";
   if (reason) next.dailyState.result = reason === "promotion"
     ? `Promotion: you are now ${next.career.role}.`
@@ -492,6 +486,7 @@ export function getCurrentDecision(state) {
     return {
       icon: "📱", kicker: "ADULT LIFE", title: "Your first opportunity is waiting",
       text: "Open Jobs on your phone. Pick one path now; you can build it from the ground up.",
+      result: state.dailyState.result,
       choices: [
         { id: "jobs", label: "Open Jobs", detail: "See the opportunities available to you.", action: "OPEN_PHONE_APP" },
       ],

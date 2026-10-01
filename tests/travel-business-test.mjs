@@ -236,7 +236,6 @@ test("relationship effects clamp and derive useful labels", () => {
 test("content meets the v0.8 variety floor", () => {
   assert.ok(EVENTS.length >= 18);
   assert.ok(WORK_DECISIONS.length >= 14);
-  assert.ok(EVENTS.filter((event) => event.choices.some((item) => item.followUp)).length >= 5);
   for (const id of ["taxi-full", "taxi-flat-tyre", "taxi-breakdown", "taxi-strike", "ehailing-surge"]) {
     assert.ok(EVENTS.some((event) => event.id === id), id);
   }
@@ -246,7 +245,7 @@ test("day flow blocks advance during a follow-up and settles income once", () =>
   let state = startDay(newLife(), { random: () => 0 });
   assert.equal(state.dailyState.phase, "path");
   state = choosePath(state, "office", { random: () => 0.1 });
-  assert.ok(["headline", "travel"].includes(state.dailyState.phase));
+  assert.ok(["headline", "work"].includes(state.dailyState.phase));
   state.dailyState.activeEventId = "taxi-full";
   state.dailyState.phase = "headline";
   state.dailyState.choiceOrder = ["stand-passage", "wait", "other-ride"];

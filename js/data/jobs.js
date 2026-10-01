@@ -5,7 +5,7 @@ export const JOB_OPPORTUNITIES = Object.freeze([
     icon: "💼",
     type: "career",
     pathId: "office",
-    minExam: 45,
+    minExam: 50,
     minKnowledge: 30,
     detail: "Start small, learn the office, earn your way upward.",
   }),

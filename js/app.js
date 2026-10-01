@@ -26,7 +26,7 @@ import {
   resolveMinigame,
   resolveUnavailableMinigame,
 } from "./systems/day.js";
-import { start as startChase } from "./minigames/chase-runner.js";
+import { start as startChase } from "./minigames/tap-thief.js";
 
 const root = document.getElementById("app");
 const loaded = loadGame(localStorage);
@@ -57,7 +57,7 @@ function render(extra = {}) {
     event: getCurrentDecision(state),
     canAdvance: canAdvanceDay(state),
     nextLabel: canAdvanceDay(state)
-      ? "NEXT DAY →"
+      ? "NEXT MONTH →"
       : state.dailyState.phase === "path"
         ? "CHOOSE A PATH FIRST"
         : state.dailyState.phase === "minigame"
@@ -196,7 +196,7 @@ async function dispatch(action, payload = {}) {
     return;
   }
   if (action === "FAST_FORWARD") {
-    const days = payload.id === "month" ? 30 : 7;
+    const days = payload.id === "year" ? 365 : payload.id === "month" ? 30 : 7;
     const result = fastForward(state, days);
     if (result.summary.daysAdvanced === 0) error = result.summary.reason;
     else {
@@ -286,7 +286,7 @@ async function dispatch(action, payload = {}) {
     return;
   }
   if (action === "NEXT_DAY" && canAdvanceDay(state)) {
-    await commit(advanceDay(state));
+    await commit(fastForward(state,30).state);
     render({ focusTarget: "#today-title" });
   }
 }

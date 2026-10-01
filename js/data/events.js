@@ -310,14 +310,7 @@ export const EVENTS = Object.freeze([
     title: "A hand takes your phone and disappears into the crowd.",
     text: "The thief looks back once. The street between you is already moving.",
     choices: [
-      choice("chase-phone", "Run after him", "", {}, { followUp: {
-        title: "You commit to the chase",
-        text: "Stay in the safe lane. One collision and he is gone.",
-        choices: [
-          choice("start-chase", "CHASE", "The street becomes a three-lane test.", {}, { minigame: "chase" }),
-          choice("stop-chase", "Stop before it gets dangerous", "You keep yourself safe and report the phone.", { stats: { happiness: -9 }, flags: { phoneLost: true } }),
-        ],
-      } }),
+      choice("chase-phone", "Catch the thief", "Tap the masked thief eight times before the timer runs out.", {}, { minigame: "chase" }),
       choice("shout-help", "Shout and point", "People turn, but the thief knows the gaps.", { stats: { social: 2, happiness: -6 }, flags: { phoneLost: true } }),
       choice("protect-yourself", "Let the phone go", "It hurts, but you do not gamble your body.", { stats: { health: 2, happiness: -8 }, flags: { phoneLost: true } }),
     ],

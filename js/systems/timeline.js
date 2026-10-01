@@ -5,7 +5,7 @@ const clone = (value) => (
 );
 
 export function canFastForward(state, days) {
-  if (![7, 30].includes(Number(days))) return { ok: false, reason: "Choose one week or one month." };
+  if (![7, 30, 365].includes(Number(days))) return { ok: false, reason: "Choose one week, one month or one year." };
   if (state.life?.stage === "school-finale") return { ok: false, reason: "Finish school first." };
   if (state.life?.ended || state.life?.stage === "ended") return { ok: false, reason: "This life has ended." };
   if (state.dailyState?.phase !== "complete" || !state.dailyState?.complete) return { ok: false, reason: "Finish today first." };
