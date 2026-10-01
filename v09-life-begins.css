@@ -1,8 +1,6 @@
 @import url("v08-sa-edition.css");
 
-/* v0.9 keeps the proven runner and cover foundation, then gives normal life a
-   warmer, brighter interface. The real licensed Quantum photograph remains at
-   assets/cover/south-african-minibus.jpg. */
+/* v0.9: bright daily play and a flag-led South African game cover. */
 :root{
   color-scheme:light;
   --ink:#17231d;
@@ -202,3 +200,41 @@ body{
 
 /* A stable daily receipt and optional attendance action. */
 .money-report{margin:14px 0;padding:15px;border:1px solid #cbdccc;border-radius:15px;background:#f9fcf7}.money-report h3{margin:0 0 10px;font-size:1rem}.money-totals{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.money-totals span{font-size:.7rem;letter-spacing:.04em;color:#52685b}.money-totals strong{display:block;margin-top:4px;font-size:1rem;letter-spacing:0;overflow-wrap:anywhere}.money-report summary{margin-top:12px;padding:8px 0;cursor:pointer;font-size:.85rem;color:#375844}.money-group h4{margin:12px 0 6px;font-size:.85rem}.money-group p{font-size:.8rem;color:#647369}.money-row{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:7px 0;border-bottom:1px solid #dce6dc;font-size:.83rem;line-height:1.45}.money-row strong{white-space:nowrap;font-variant-numeric:tabular-nums}.money-in{color:#157047}.money-out,.money-debt{color:#aa3c42}.money-debt{font-size:.85rem}.stay-home-action{margin-top:9px;padding:8px 11px;border:1px solid #95ab9a;border-radius:10px;background:#fff;color:#385543;cursor:pointer;font-size:.83rem}.stay-home-action small{display:block;margin-top:3px;color:#65776a;font-size:.7rem}.money-delta{max-width:240px;font-size:.78rem;white-space:normal;line-height:1.3;pointer-events:none}.slot-machine--spinning .slot-reel--stopped{filter:none}
+
+/* The opening screen: flag energy, readable game logo, compact mobile setup. */
+.start-layout{max-width:1120px;background:#fff8e9}
+.start-layout .cover{min-height:300px;background:#08293a;border-bottom:5px solid #ffcb32}
+.cover .cover__photo{display:none}
+.cover .cover__flag{inset:0;width:100%;height:100%;aspect-ratio:auto;opacity:1;transform:none;background:url("assets/cover/south-african-flag.svg") center/cover no-repeat;z-index:-3}
+.cover .cover__shade{background:linear-gradient(90deg,#071d31b8,#071d3140 75%),linear-gradient(0deg,#071d31e8,transparent 75%);z-index:-1}
+.cover::after{content:"";position:absolute;inset:0;z-index:-2;pointer-events:none;background:repeating-linear-gradient(120deg,transparent 0 36px,#ffffff0b 37px 38px),radial-gradient(ellipse at 75% 15%,#ffffff35,transparent 60%)}
+.cover .cover__copy{justify-content:center;padding:28px 22px 30px;gap:0}
+.cover .cover__kicker{color:#ffdf77;font-size:.68rem;letter-spacing:.18em;text-shadow:0 2px 3px #000}
+.cover .cover__title{display:grid;grid-template-columns:max-content max-content;gap:0 .17em;color:#fffdf5;font:clamp(2.75rem,13.8vw,5.8rem)/.93 "Archivo Black",Impact,system-ui,sans-serif;letter-spacing:-.045em;text-shadow:0 4px 0 #102431,0 7px 0 #102431,0 12px 18px #0008;-webkit-text-stroke:1px #102431;paint-order:stroke fill}
+.cover .cover__title span:last-child{grid-column:1/-1;color:#ffcb32;font-size:1.24em;letter-spacing:-.055em}
+.cover .cover__edition{margin-top:13px;border:1px solid #ffffff75;background:#061c32b5;border-radius:6px;color:#fff9e8;font-size:.6rem;letter-spacing:.16em;padding:5px 9px}
+.cover .cover__line{color:#fff;font-size:.94rem;line-height:1.4;margin-top:12px;text-shadow:0 2px 4px #0008}
+.cover__play-hooks{display:flex;flex-wrap:wrap;gap:7px;margin-top:14px}
+.cover__play-hooks span{padding:6px 9px;border:1px solid #ffffff40;border-radius:9px;color:#fff9e8;background:#062038bc;font-size:.66rem;font-weight:800;box-shadow:0 3px 0 #0003}
+.start-layout .setup-card{padding:24px 20px max(24px,env(safe-area-inset-bottom));background:radial-gradient(ellipse at 100% 0,#fff0bb,transparent 60%),#fff8e9}
+.setup-card .eyebrow{color:#785511;font-size:.65rem;margin-bottom:8px;letter-spacing:.12em}
+.start-layout .setup-card h2{font-size:clamp(1.65rem,6.8vw,2.5rem);letter-spacing:-.04em;line-height:1.15;color:#102c36}
+.start-layout .setup-card__intro{margin:8px 0 18px;font-size:.86rem;line-height:1.5;color:#505f60;max-width:32rem}
+.setup-card .field-label,.setup-card .gender-field legend{font-size:.85rem;margin-bottom:7px;color:#17333c}
+.setup-card input[type="text"]{min-height:46px;border:2px solid #d2d6cc;background:#fffdf8;color:#17333c;border-radius:12px;padding:0 12px;font-size:.9rem}
+.setup-card input[type="text"]:focus{border-color:#147b65}
+.setup-card .field-help{font-size:.68rem;line-height:1.4;margin:6px 0 15px;color:#5b6967}
+.setup-card .gender-options{gap:7px}
+.setup-card .gender-chip span{min-height:44px;border:2px solid #d2d6cc;background:#fffdf8;border-radius:11px;font-size:.75rem;color:#17333c;transition:background .15s,border-color .15s,transform .15s}
+.setup-card .gender-chip input:checked+span{background:#d8f2df;border-color:#147b65;color:#124c3a;box-shadow:0 3px 0 #147b6530;transform:translateY(-2px)}
+.setup-card .form-error{color:#9f2936;min-height:0;font-size:.75rem;margin:6px 0 10px}
+.setup-card .form-error:empty{display:none}
+.setup-card .button--primary{background:linear-gradient(#ffdc54,#ffc52d);color:#142d34;border:2px solid #142d34;border-radius:13px;min-height:50px;box-shadow:0 5px 0 #142d34;font-size:.95rem;margin-top:5px}
+.setup-card .button--primary:disabled{background:#e4dec9;color:#5e6258;border-color:#9a9e8e;opacity:1;box-shadow:0 3px 0 #9a9e8e}
+.setup-card .button--primary:not(:disabled):hover{background:#ffe477;transform:translateY(-1px)}
+.setup-card .button--primary:active:not(:disabled){transform:translateY(3px);box-shadow:0 2px 0 #142d34}
+.setup-card .button--quiet{color:#234a4d;border:1px solid #92a59b;border-radius:12px;font-size:.85rem}
+.setup-card .save-note{font-size:.66rem;margin:15px 0 0;color:#596b65}
+@media(min-width:720px){.start-layout .cover{min-height:100dvh;border-bottom:0;border-right:5px solid #ffcb32}.cover .cover__copy{padding:42px 30px}.cover .cover__title{font-size:clamp(3.8rem,6.8vw,5.8rem)}.cover .cover__flag{background-size:auto 100%}.start-layout .setup-card{padding:36px}.cover .cover__line{font-size:1.05rem}.cover__play-hooks span{font-size:.74rem}}
+@media(max-width:359px){.cover .cover__copy{padding-inline:16px}.start-layout .setup-card{padding-inline:16px}.cover__play-hooks{gap:5px}.cover__play-hooks span{font-size:.6rem;padding:5px 7px}}
+@media(prefers-reduced-motion:reduce){.cover .cover__title span{animation:none}.setup-card .gender-chip span,.setup-card .button{transition:none}}

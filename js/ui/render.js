@@ -110,7 +110,8 @@ function renderCover() {
         <p class="cover__kicker">LIFE · MONEY · MAYHEM</p>
         <h1 id="cover-title" class="cover__title"><span>ONE</span><span>MORE</span><span>DAY</span></h1>
         <p class="cover__edition">SA EDITION</p>
-        <p class="cover__line">One choice can change the whole week.</p>
+        <p class="cover__line">Your life. Your choices. Your next big move.</p>
+        <div class="cover__play-hooks" aria-label="Life, money and choices"><span>💸 Make moves</span><span>⚡ Face the chaos</span><span>🎲 Change your future</span></div>
       </div>
     </section>`;
 }
@@ -121,9 +122,9 @@ function setupMarkup(model, message) {
     <div class="start-layout">
       ${renderCover()}
       <section class="setup-card" aria-labelledby="new-life-title">
-        <p class="eyebrow">YOUR STORY STARTS HERE</p>
+        <p class="eyebrow">PLAYER ONE · THAT’S YOU</p>
         <h2 id="new-life-title">Start a new life</h2>
-        <p class="setup-card__intro">Build a future, survive the chaos, and make your money last.</p>
+        <p class="setup-card__intro">Make money. Handle the unexpected. Live with your choices.</p>
         <form id="newLifeForm" novalidate>
           <label class="field-label" for="playerName">What should we call you?</label>
           <input id="playerName" name="playerName" type="text" value="${escapeText(model.name)}" maxlength="24"
@@ -134,7 +135,7 @@ function setupMarkup(model, message) {
             <label class="gender-chip"><input type="radio" name="gender" value="woman" ${gender === "woman" ? "checked" : ""}><span>Woman</span></label>
             <label class="gender-chip"><input type="radio" name="gender" value="non-binary" ${gender === "non-binary" ? "checked" : ""}><span>Non-binary</span></label>
           </div></fieldset>
-          <p id="setupError" class="form-error" aria-live="polite" tabindex="-1">${escapeText(model.error)}</p>
+          <p id="setupError" class="form-error" aria-live="polite" tabindex="-1"></p>
           <button class="button button--primary button--wide" type="submit" data-action="START_LIFE" ${model.canStart ? "" : "disabled"}>START LIFE <span aria-hidden="true">→</span></button>
           ${model.hasSave ? `<button class="button button--quiet button--wide" type="button" data-action="CONTINUE_LIFE">Continue saved life</button>` : ""}
         </form>
@@ -239,13 +240,13 @@ export function createRenderer({ root, dispatch }) {
   let draft = { name: "", gender: "" };
   let currentContext = {};
   let destroyed = false;
-  const updateSetupValidity = () => {
+  const updateSetupValidity = (showErrors = false) => {
     const form = root.querySelector("#newLifeForm");
     if (!form) return;
     draft = { name: form.elements.playerName.value, gender: form.elements.gender.value };
     const model = buildSetupModel({ ...draft, hasSave: currentContext.hasSave });
     form.querySelector('[data-action="START_LIFE"]').disabled = !model.canStart;
-    form.querySelector("#setupError").textContent = model.error;
+    form.querySelector("#setupError").textContent = showErrors ? model.error : "";
   };
   const onInput = (event) => { if (event.target.closest("#newLifeForm")) updateSetupValidity(); };
   const onClick = (event) => {
@@ -263,7 +264,7 @@ export function createRenderer({ root, dispatch }) {
     }
     if (event.target.id !== "newLifeForm") return;
     event.preventDefault();
-    updateSetupValidity();
+    updateSetupValidity(true);
     const model = buildSetupModel({ ...draft, hasSave: currentContext.hasSave });
     if (model.canStart) dispatch("START_LIFE", { ...draft });
   };

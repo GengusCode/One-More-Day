@@ -6,4 +6,8 @@
 Source: https://commons.wikimedia.org/wiki/File:SouthAfricanMinibus.jpg  
 License: [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)
 
-ONE MORE DAY uses the 960-pixel Wikimedia preview as a locally stored cover image. It is displayed with a responsive crop, dark readability gradient, and South African flag-colour overlay. No claim of endorsement by the photographer is made.
+ONE MORE DAY uses the 960-pixel Wikimedia preview as a locally stored cover image. The photograph remains available in the historical edition; the current opening screen uses a local vector flag. No claim of endorsement by the photographer is made.
+
+## Current flag cover
+
+Local SVG construction of the South African flag, with the layout and colour references checked against https://www.gov.za/about-sa/national-flag-0 . Red is above blue, and the hoist is on the left.
