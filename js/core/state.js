@@ -52,6 +52,8 @@ export function createDefaultState() {
       happiness: 68,
       reputation: 35,
     },
+    household: { lastSettledDay: 0, lastCost: 0 },
+    stokvel: { balance: 0, contributions: [], lastPaidCycle: -1, lastPayout: null },
     finances: {
       cash: 350,
       netWorth: 350,
@@ -178,7 +180,7 @@ export function calculateNetWorth(state) {
     0,
   );
   const businessValue = Math.max(0, Number(state.business?.value) || 0);
-  return Math.round((Number(state.finances?.cash) || 0) + assetValue + businessValue);
+  return Math.round((Number(state.finances?.cash) || 0) + assetValue + businessValue + Math.max(0, Number(state.stokvel?.balance) || 0));
 }
 
 function addRelationshipEffects(next, effects) {

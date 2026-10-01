@@ -196,15 +196,15 @@ export const EVENTS = Object.freeze([
   },
   {
     id: "stokvel-pressure", deck: "money", icon: "🤝", kicker: "THE GROUP IS COUNTING",
-    title: "The stokvel contribution is due before payday.",
+    title: "This month’s stokvel contribution is still outstanding.",
     text: "Skipping saves cash now, but everybody notices who carries the group.",
     choices: [
       choice("pay-stokvel", "Make the contribution", "", {}, { followUp: {
         title: "Your cash is tight",
         text: "Do you use savings or make a smaller honest offer?",
         choices: [
-          choice("full-stokvel", "Pay the full amount", "The group knows your word means something.", { cash: -180, stats: { reputation: 6, happiness: 2 }, relationships: { friend: 5 } }),
-          choice("partial-stokvel", "Explain and pay part", "Honesty keeps the relationship warmer than silence would.", { cash: -80, stats: { reputation: 2 }, relationships: { friend: 2 } }),
+          choice("full-stokvel", "Pay the full amount", "The group knows your word means something.", { stats: { reputation: 6, happiness: 2 }, relationships: { friend: 5 } }),
+          choice("partial-stokvel", "Explain and pay part", "Honesty keeps the relationship warmer than silence would.", { stats: { reputation: 2 }, relationships: { friend: 2 } }),
         ],
       } }),
       choice("skip-stokvel", "Keep quiet this month", "Your cash survives. The group chat goes cold.", { stats: { reputation: -6 }, relationships: { friend: -7 } }),
@@ -227,9 +227,9 @@ export const EVENTS = Object.freeze([
     title: "Gogo needs groceries carried home.",
     text: "It will take the afternoon, and she has already told everyone you are coming.",
     choices: [
-      choice("help-gogo", "Go help properly", "You lose an afternoon and gain a full plate.", { cash: -70, stats: { energy: -8, happiness: 6, reputation: 5 }, relationships: { gogo: 10 } }),
+      choice("help-gogo", "Go help properly", "You lose an afternoon and gain a full plate.", { cash: -70, stats: { energy: -8, happiness: 6, reputation: 5 }, relationships: { gogo: 10 } }, { delayed: { days: 5, outcomeId: "gogo-support", severity: 1, result: "Gogo remembers your help and brings a meal when you are tired.", effects: { stats: { energy: 8, happiness: 4 } } } }),
       choice("send-groceries", "Pay for delivery", "The groceries arrive before your apology does.", { cash: -120, relationships: { gogo: 3 } }),
-      choice("promise-later", "Promise to come tomorrow", "Tomorrow now has an appointment.", { relationships: { gogo: -3 } }, { delayed: { days: 1, outcomeId: "gogo-reminder", severity: 2 } }),
+      choice("promise-later", "Promise to come tomorrow", "Tomorrow now has an appointment.", { relationships: { gogo: -3 } }, { delayed: { days: 1, outcomeId: "gogo-reminder", severity: 2, result: "You missed Gogo’s visit; she feels forgotten.", effects: { relationships: { gogo: -5 }, stats: { happiness: -2 } } } }),
     ],
   },
   {
@@ -247,7 +247,7 @@ export const EVENTS = Object.freeze([
     title: "The spaza owner offers to write it in the book.",
     text: "It solves tonight and becomes next week's problem.",
     choices: [
-      choice("take-credit", "Put the basics on account", "You eat tonight and owe R90 on payday.", { stats: { happiness: 3 } }, { delayed: { days: 3, outcomeId: "spaza-debt", severity: 3, effects: { cash: -90 } } }),
+      choice("take-credit", "Put the basics on account", "You eat tonight and owe R90 on payday.", { stats: { happiness: 3 } }, { delayed: { days: 3, outcomeId: "spaza-debt", severity: 3, result: "Your R90 spaza account is due and has been charged.", effects: { cash: -90 } } }),
       choice("buy-less", "Buy only what cash covers", "Dinner is plain, but tomorrow owes you nothing.", { cash: -35, stats: { happiness: -2 } }),
       choice("cook-together", "Ask a neighbour to combine meals", "Two cupboards make one decent supper.", { cash: -20, stats: { social: 5 }, relationships: { neighbour: 5 } }),
     ],
@@ -376,7 +376,7 @@ export const WORK_DECISIONS = Object.freeze([
   ] },
   { id: "career-honesty", path: "career", topic: "honesty", title: "A mistake nobody saw", choices: [
     choice("own", "Own the mistake", "The fix is uncomfortable and credible.", { career: { performance: 2, boss: 3, readiness: 5 } }),
-    choice("hide", "Fix it quietly", "It disappears for now.", { career: { readiness: -4 } }, { risk: { severity: 52, communication: -16 }, delayed: { days: 2, outcomeId: "hidden-error", severity: 4 } }),
+    choice("hide", "Fix it quietly", "It disappears for now.", { career: { readiness: -4 } }, { risk: { severity: 52, communication: -16 }, delayed: { days: 2, outcomeId: "hidden-error", severity: 4, result: "The hidden error is found. Your boss loses trust.", effects: { career: { boss: -8, performance: -6 } } } }),
   ] },
   { id: "career-initiative", path: "career", topic: "initiative", title: "The process everyone hates", choices: [
     choice("prototype", "Build a small improvement", "The team saves time and remembers who started.", { career: { performance: 5, readiness: 7 }, stats: { knowledge: 4 } }),
@@ -420,7 +420,7 @@ export const WORK_DECISIONS = Object.freeze([
   ] },
   { id: "owner-supplier", path: "business", topic: "supplier", title: "A supplier asks for trust", choices: [
     choice("small-order", "Test a small order", "The risk stays small and the data becomes useful.", { cash: -80, stats: { knowledge: 3 } }),
-    choice("full-order", "Commit for the discount", "The price is good. Delivery is now somebody else's promise.", { cash: -220 }, { delayed: { days: 2, outcomeId: "supplier-delivery", severity: 3 } }),
+    choice("full-order", "Commit for the discount", "The price is good. Delivery is now somebody else's promise.", { cash: -220 }, { delayed: { days: 2, outcomeId: "supplier-delivery", severity: 3, result: "Your order arrives; the next customer jobs have stock ready.", effects: { business: { trust: 4 } } } }),
   ] },
   { id: "owner-equipment", path: "business", topic: "equipment", title: "Equipment fails mid-job", choices: [
     choice("repair", "Pay for a proper repair", "The day costs money and tomorrow stays possible.", { cash: -140, business: { trust: 2 } }),
@@ -430,6 +430,11 @@ export const WORK_DECISIONS = Object.freeze([
 
 export function isEventEligible(event, state) {
   const rule = event.eligibility || {};
+  if (event.id === "stokvel-pressure") {
+    const cycle = Math.floor((state.calendar.day - 1) / 365);
+    const month = Math.floor(((state.calendar.day - 1) % 365) * 12 / 365);
+    if ((state.stokvel?.contributions || []).filter(item => item.cycle === cycle && item.month === month).reduce((sum,item)=>sum+item.amount,0) >= 180) return false;
+  }
   if (rule.minAge && state.calendar.age < rule.minAge) return false;
   if (rule.maxAge && state.calendar.age > rule.maxAge) return false;
   if (rule.minStaff && state.business.staff.length < rule.minStaff) return false;

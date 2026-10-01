@@ -105,7 +105,7 @@ export function resolveOwnerChoice(state, eventId, choiceId) {
     next = scheduleDelayedEvent(next, {
       dueDay: next.calendar.day + choice.delayed.days,
       eventId,
-      outcomeId: choice.delayed.outcomeId,
+      outcomeId: choice.delayed.outcomeId + "-" + next.calendar.day,
       severity: choice.delayed.severity || 1,
       payload: choice.delayed,
     });
@@ -123,9 +123,12 @@ export function settleBusinessDay(state, { day = state.calendar.day, operating =
   if (operating) {
     const demand = 0.65 + next.business.trust / 100 * 0.7;
     const variation = 0.9 + random() * 0.2;
-    const gross = Math.round(next.business.baselineRevenue * next.business.capacity * demand * variation);
+    const gross = Math.round(next.business.baselineRevenue * Math.min(3.5, Math.pow(next.business.capacity, 0.65)) * demand * variation);
     const wages = next.business.staff.reduce((sum, employee) => sum + Number(employee.wage || 0), 0);
-    const net = gross - wages;
+    const supplies = Math.round(gross * (next.business.id === "buy-resell" ? 0.55 : 0.25));
+    const overhead = 10 + next.business.premises.length * 25;
+    const net = gross - supplies - overhead - wages;
+    Object.assign(status, { gross, supplies, overhead, wages });
     const settled = applyEffects(next, { cash: net, stats: { energy: -9 } }, { source: "business-income" });
     next = settled.state;
     transactions = settled.transactions;

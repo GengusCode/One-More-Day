@@ -1,3 +1,4 @@
+import { applyEffects } from "../core/state.js";
 import { EVENTS, isEventEligible } from "../data/events.js";
 
 const clone = (value) => (
@@ -68,13 +69,22 @@ export function scheduleDelayedEvent(state, item) {
 }
 
 export function resolveDueEvents(state, day) {
-  const next = clone(state);
+  let next = clone(state);
   const resolved = new Set(next.eventHistory.resolvedOutcomeIds || []);
   const due = next.delayedEvents
     .filter((item) => Number(item.dueDay) <= day && !resolved.has(item.outcomeId))
     .sort((a, b) => (Number(b.severity) || 0) - (Number(a.severity) || 0));
   next.delayedEvents = next.delayedEvents.filter((item) => !due.includes(item));
-  due.forEach((item) => resolved.add(item.outcomeId));
+  due.forEach((item) => {
+    if (resolved.has(item.outcomeId)) return;
+    const effects = item.payload?.effects || {};
+    if (effects.business?.trust) next.business.trust = Math.max(0, Math.min(100, next.business.trust + effects.business.trust));
+    for (const key of ["performance", "boss", "coworkers", "readiness"]) {
+      if (effects.career?.[key]) next.career[key] = Math.max(0, Math.min(100, next.career[key] + effects.career[key]));
+    }
+    next = applyEffects(next, effects, { source: item.eventId + "-consequence" }).state;
+    resolved.add(item.outcomeId);
+  });
   next.eventHistory.resolvedOutcomeIds = [...resolved].slice(-100);
   return {
     state: next,

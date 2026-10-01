@@ -1,3 +1,4 @@
+import { contributeStokvel } from "./systems/household.js";
 import {
   createDefaultState,
   createNewLife,
@@ -232,6 +233,13 @@ async function dispatch(action, payload = {}) {
   if (action === "RESOLVE_WORK") {
     await commit(resolveWork(state, payload.id));
     render({ focusTarget: "#today-title" });
+    return;
+  }
+  if (action === "PAY_STOKVEL") {
+    const result = contributeStokvel(state, payload.id === "partial" ? 80 : 180);
+    if (!result.ok) error = "You cannot afford this contribution, or this month is already paid.";
+    else await commit(result.state);
+    render();
     return;
   }
   if (action === "BUY_UPGRADE") {

@@ -1,3 +1,4 @@
+import { contributeStokvel, settleHouseholdDay, settleStokvelPayout } from "./household.js";
 import { applyEffects } from "../core/state.js";
 import { formatRand } from "../data/economy.js";
 import { EVENTS, WORK_DECISIONS, getEventById, isEventEligible } from "../data/events.js";
@@ -78,7 +79,7 @@ function scheduleChoiceDelay(state, eventId, choice) {
   return scheduleDelayedEvent(state, {
     dueDay: state.calendar.day + Number(choice.delayed.days || 1),
     eventId,
-    outcomeId: choice.delayed.outcomeId,
+    outcomeId: choice.delayed.outcomeId + "-" + state.calendar.day,
     severity: choice.delayed.severity || 1,
     payload: choice.delayed,
   });
@@ -163,7 +164,7 @@ function prepareActivity(state, random) {
 }
 
 function finishDay(state) {
-  const next = clone(state);
+  const next = settleHouseholdDay(state);
   next.dailyState.phase = "complete";
   next.dailyState.complete = true;
   return next;
@@ -245,8 +246,13 @@ function finalizeHeadline(state, event, choice) {
 }
 
 function applyEventChoice(state, event, choice) {
-  const applied = applyDomainEffects(state, choice.effects || {});
-  let next = applied.state;
+  let next = clone(state);
+  if (event.id === "stokvel-pressure" && ["full-stokvel", "partial-stokvel"].includes(choice.id)) {
+    const contribution = contributeStokvel(next, choice.id === "full-stokvel" ? 180 : 80);
+    if (!contribution.ok) { next.dailyState.result = "You cannot afford this contribution, or this month is already paid."; return next; }
+    next = contribution.state;
+  }
+  next = applyDomainEffects(next, choice.effects || {}).state;
   next = scheduleChoiceDelay(next, event.id, choice);
   next.dailyState.result = choice.result || "";
   return next;
@@ -255,11 +261,11 @@ function applyEventChoice(state, event, choice) {
 export function startDay(state, { random = Math.random } = {}) {
   if (state.dailyState.phase !== "morning") return state;
   if (state.life?.stage === "school-finale") return state;
-  let next = resetDailyTransport(state, state.calendar.day);
+  let next = settleStokvelPayout(resetDailyTransport(state, state.calendar.day));
   next = applyEffects(next, { stats: { energy: 12 } }, { source: "morning-recovery" }).state;
   const due = resolveDueEvents(next, next.calendar.day);
   next = due.state;
-  next.dailyState.updates = due.updates.map((item) => item.payload?.result || item.outcomeId);
+  next.dailyState.updates = [due.primary, ...due.updates].filter(Boolean).map((item) => item.payload?.result || item.outcomeId);
   if (due.primary) {
     next.dailyState.result = due.primary.payload?.result || due.primary.outcomeId;
   }
@@ -343,7 +349,7 @@ export function resolveWork(state, choiceId, { random = Math.random } = {}) {
       const receipt = income.source === "salary"
         ? `Your shift paid ${formatRand(income.amount)}.`
         : income.amount >= 0
-          ? `Today's business sales left ${formatRand(income.amount)} after staff wages.`
+          ? `Today's business sales left ${formatRand(income.amount)} after supplies, overhead and staff wages.`
           : `Today's business costs exceeded sales by ${formatRand(-income.amount)}.`;
       next.dailyState.result = [next.dailyState.result, receipt].filter(Boolean).join(" ");
     }
@@ -439,7 +445,7 @@ export function settleRoutineDay(state, { random = Math.random, driverMode = fal
   next = applyEffects(next, { stats: { energy: 8 } }, { source: "routine-recovery" }).state;
   const due = resolveDueEvents(next, next.calendar.day);
   next = due.state;
-  next.dailyState.updates = due.updates.map((item) => item.payload?.result || item.outcomeId);
+  next.dailyState.updates = [due.primary, ...due.updates].filter(Boolean).map((item) => item.payload?.result || item.outcomeId);
   if (due.primary) next.dailyState.result = due.primary.payload?.result || due.primary.outcomeId;
 
   const transactions = [];
@@ -452,6 +458,12 @@ export function settleRoutineDay(state, { random = Math.random, driverMode = fal
     }
   }
 
+  if (isWorkingDay(next) && hasPath(next)) {
+    const mode = next.transport.owned.includes("bicycle") ? "bicycle" : "taxi";
+    const commute = resolveTravel(next, mode, {});
+    next = commute.state;
+    transactions.push(...commute.transactions);
+  }
   let status = {};
   if (isWorkingDay(next) && next.career.active) {
     const settled = settleCareerDay(next, { day: next.calendar.day, attendance: "present" });

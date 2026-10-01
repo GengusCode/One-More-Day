@@ -131,7 +131,7 @@ export function resolveCareerChoice(state, eventId, choiceId, { random = Math.ra
     next = scheduleDelayedEvent(next, {
       dueDay: next.calendar.day + choice.delayed.days,
       eventId,
-      outcomeId: choice.delayed.outcomeId,
+      outcomeId: choice.delayed.outcomeId + "-" + next.calendar.day,
       severity: choice.delayed.severity || 1,
       payload: choice.delayed,
     });

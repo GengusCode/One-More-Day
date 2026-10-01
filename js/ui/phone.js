@@ -1,3 +1,4 @@
+import { stokvelMonth } from "../systems/household.js";
 import { formatRand } from "../data/economy.js";
 import { BUSINESS_UPGRADES } from "../systems/business.js";
 import { getAvailableJobs } from "../systems/jobs.js";
@@ -92,7 +93,7 @@ function businessApp(state) {
     cards: [{
       id: "business-active", icon: "📈", title: state.business.title,
       text: `Capacity ${state.business.capacity} · ${state.business.staff.length} staff · Value ${formatRand(state.business.value)}`,
-      badge: "Owner-operated",
+      badge: "Sales minus supplies, overhead and wages",
       actions: [
         ...upgrades.map(([id, item]) => action(id, "BUY_UPGRADE", `Buy ${item.name}`, formatRand(item.cost), state.finances.cash < item.cost)),
         action("helper", "HIRE_EMPLOYEE", "Hire a helper", "R80 daily wage"),
@@ -118,6 +119,9 @@ function lifeApp(state) {
   return {
     summary: `${state.life.stage === "later-life" ? "Later life" : state.life.ended ? "Life complete" : `Age ${state.calendar.age}`} · Net worth ${formatRand(state.finances.netWorth)}`,
     cards: [
+      ...(state.dailyState.updates || []).map((text,index) => ({ id: `update-${index}`, title: "Life update", icon: "📩", text, badge: "Consequences", actions: [] })),
+      { id: "budget", title: "Living costs", icon: "🏠", text: "Food R25 each day · Electricity R70 every 7 days · Housing R450 every 30 days. Negative cash is debt.", badge: `Cash ${formatRand(state.finances.cash)}`, actions: [] },
+      { id: "stokvel", title: "Stokvel savings", icon: "🤝", text: `${state.stokvel.lastPayout ? `Last payout ${formatRand(state.stokvel.lastPayout.amount)} on day ${state.stokvel.lastPayout.day}. ` : ""}Saved ${formatRand(state.stokvel.balance)} · Annual payout on day ${(Math.floor((state.calendar.day - 1) / 365) + 1) * 365}. You receive what you contributed; missed months reduce the payout.`, badge: `Month ${stokvelMonth(state.calendar.day) + 1}`, actions: [action("full", "PAY_STOKVEL", "Contribute / top up to R180", "Once each month"), action("partial", "PAY_STOKVEL", "Contribute R80", "Counts toward this month")] },
       stat("Health", state.stats.health, "❤️"), stat("Happiness", state.stats.happiness, "☀️"),
       stat("Knowledge", state.stats.knowledge, "🧠"), stat("Social", state.stats.social, "💬"),
       stat("Reputation", state.stats.reputation, "⭐"),
@@ -142,7 +146,8 @@ function timeApp(state) {
 export function buildPhoneModel(state) {
   const builders = { jobs: jobsApp, transport: transportApp, business: businessApp, people: peopleApp, life: lifeApp, time: timeApp };
   const apps = APP_ORDER.map((id) => ({ id, ...APP_META[id], ...builders[id](state) }));
-  const notifications = [];
+  const notifications = (state.dailyState.updates || []).map(text => ({ app: "life", text }));
+  if (state.stokvel.lastPayout) notifications.push({ app: "life", text: `Last stokvel payout: ${formatRand(state.stokvel.lastPayout.amount)} on day ${state.stokvel.lastPayout.day}` });
   if (state.jobs?.activeApplicationId) notifications.push({ app: "jobs", text: "Application pending" });
   if (state.jobs?.lastResult) notifications.push({ app: "jobs", text: state.jobs.lastResult.message });
   return { apps, notifications };

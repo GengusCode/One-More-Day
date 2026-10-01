@@ -22,11 +22,13 @@ const week = fastForward(worker, 7, { random: () => 0.5 });
 assert.equal(week.interrupted, false);
 assert.equal(week.summary.daysAdvanced, 7);
 assert.equal(week.state.calendar.day, 8);
-assert.equal(week.state.finances.cash, 1_250, "five weekdays should pay exactly once");
+assert.equal(week.state.finances.cash, 855, "five salaries minus five taxi fares, seven food bills and one electricity bill");
 assert.equal(week.state.timeline.settledDayIds.length, 7);
 assert.ok(week.summary.items.length <= 3);
 
-const month = fastForward(completeAdult("Liam"), 30, { random: () => 0.5 });
+const funded = completeAdult("Liam");
+funded.finances.cash = 3000;
+const month = fastForward(funded, 30, { random: () => 0.5 });
 assert.equal(month.interrupted, false);
 assert.equal(month.state.calendar.day, 31);
 assert.equal(month.state.timeline.settledDayIds.length, 30);
