@@ -5,6 +5,7 @@ import { drawEvent } from "../js/systems/event-deck.js";
 import { EVENTS, WORK_DECISIONS, isEventEligible } from "../js/data/events.js";
 import { choosePath, resolveWork, startDay } from "../js/systems/day.js";
 import { startBusiness, resolveOwnerChoice } from "../js/systems/business.js";
+import {buildMoneyReport} from '../js/ui/money-ledger.js';
 
 const adult = () => {
   const state = createNewLife({ name: "Naledi", gender: "woman" });
@@ -85,7 +86,7 @@ test("completed work explains the salary source and cannot pay twice", () => {
   state.dailyState.phase = "work";
   state.dailyState.workDecisionId = "career-quality";
   const finished = resolveWork(state, "check", { random: () => 0 });
-  assert.match(finished.dailyState.result, /shift.*R180|R180.*shift/i);
+  assert.ok(buildMoneyReport(finished).rows.some(row=>row.label==='Shift wages' && row.amount===180));
   assert.equal(finished.finances.transactions.filter((item) => item.source === "salary").length, 1);
   assert.equal(resolveWork(finished, "check").finances.cash, finished.finances.cash);
 });

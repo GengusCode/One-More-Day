@@ -1,4 +1,5 @@
 import { formatRand } from "../data/economy.js";
+import {transactionLabel} from './money-ledger.js';
 
 export function createMoneyQueue({
   present = () => {},
@@ -59,7 +60,7 @@ export function createMoneyFeedback({ host, balanceNode, reducedMotion = false }
     present(transaction) {
       const label = document.createElement("span");
       label.className = "money-delta " + (transaction.amount >= 0 ? "money-delta--gain" : "money-delta--loss");
-      label.textContent = (transaction.amount >= 0 ? "+" : "−") + formatRand(Math.abs(transaction.amount));
+      label.textContent = (transaction.amount >= 0 ? "+" : "−") + formatRand(Math.abs(transaction.amount)) + ' · ' + transactionLabel(transaction);
       host.replaceChildren(label);
       activeLabel = label;
       requestAnimationFrame(() => label.classList.add("money-delta--visible"));
@@ -67,7 +68,6 @@ export function createMoneyFeedback({ host, balanceNode, reducedMotion = false }
     settle(transaction) {
       if (activeLabel) activeLabel.remove();
       activeLabel = null;
-      balanceNode.textContent = formatRand(transaction.balance);
       balanceNode.classList.remove("balance-settle");
       void balanceNode.offsetWidth;
       balanceNode.classList.add("balance-settle");

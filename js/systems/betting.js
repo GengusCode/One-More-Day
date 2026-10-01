@@ -1,8 +1,8 @@
 import { applyEffects } from '../core/state.js';
 
-export function placeBet(state, amount, { random = Math.random } = {}) {
+export function beginBet(state, amount, { random = Math.random } = {}) {
   const stake = Number(amount);
-  if (state.life.stage === 'school-finale' || state.life.ended || !Number.isSafeInteger(stake) || stake < 1 || stake > state.finances.cash || !Number.isSafeInteger(stake * 30 + state.finances.cash)) {
+  if (state.betting.pendingResult || state.life.stage === 'school-finale' || state.life.ended || !Number.isSafeInteger(stake) || stake < 1 || stake > state.finances.cash || !Number.isSafeInteger(stake * 30 + state.finances.cash)) {
     return { state, ok: false, reason: 'Enter a whole-rand amount between R1 and your available cash.' };
   }
   let next = applyEffects(state, { cash: -stake }, { source: 'betway-stake' }).state;
@@ -18,10 +18,24 @@ export function placeBet(state, amount, { random = Math.random } = {}) {
   const index = Math.min(symbols.length - 1, Math.floor(random() * symbols.length));
   const symbol = multiplier === 30 ? '7️⃣' : multiplier === 5 ? '💎' : '🍒';
   const reels = multiplier ? [symbol, symbol, symbol] : [symbols[index], symbols[(index + 1) % symbols.length], symbols[(index + 3) % symbols.length]];
-  if (payout) next = applyEffects(next, { cash: payout }, { source: jackpot ? 'betway-jackpot' : 'betway-win' }).state;
-  next.betting.lastResult = { stake, jackpot, payout, multiplier, reels, day: next.calendar.day };
+  next.betting.pendingResult = { stake, jackpot, payout, multiplier, reels, day: next.calendar.day };
   next.betting.totalStaked += stake;
-  next.betting.totalPaid += payout;
   next.betting.rounds += 1;
   return { state: next, ok: true };
+}
+
+export function completeBet(state) {
+  const result=state.betting.pendingResult;
+  if(!result) return {state,ok:false};
+  let next=structuredClone(state);
+  next.betting.pendingResult=null;
+  if(result.payout) next=applyEffects(next,{cash:result.payout},{source:result.jackpot?'betway-jackpot':'betway-win'}).state;
+  next.betting.lastResult=result;
+  next.betting.totalPaid+=result.payout;
+  return {state:next,ok:true};
+}
+
+export function placeBet(state,amount,options={}) {
+  const started=beginBet(state,amount,options);
+  return started.ok ? completeBet(started.state) : started;
 }

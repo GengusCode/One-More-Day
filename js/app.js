@@ -1,4 +1,4 @@
-import { placeBet } from "./systems/betting.js";
+import { beginBet, completeBet } from "./systems/betting.js";
 import { contributeStokvel } from "./systems/household.js";
 import {
   createDefaultState,
@@ -24,6 +24,7 @@ import {
   advanceDay,
   canAdvanceDay,
   getCurrentDecision,
+  stayHomeToday,
   resolveMinigame,
   resolveUnavailableMinigame,
 } from "./systems/day.js";
@@ -43,6 +44,7 @@ let error = versionCompatible
   ? ""
   : "A game update is still loading. Refresh this page before making a choice.";
 let moneyFeedback = null;
+let moneyFeedbackHost = null;
 let chaseLaunching = false;
 const seenTransactions = new Set(state.finances.transactions.map((item) => item.id));
 
@@ -50,8 +52,6 @@ const renderer = createRenderer({ root, dispatch });
 
 function render(extra = {}) {
   clearInterval(examTimer);
-  moneyFeedback?.destroy();
-  moneyFeedback = null;
   renderer.render(state, {
     screen,
     slotsSpinning,
@@ -73,15 +73,19 @@ function render(extra = {}) {
     const host = root.querySelector("#moneyFeedback");
     const balanceNode = root.querySelector("#cashBalance");
     if (host && balanceNode) {
-      moneyFeedback = createMoneyFeedback({
+      if(host!==moneyFeedbackHost) {
+        moneyFeedback?.destroy();
+        moneyFeedbackHost=host;
+        moneyFeedback = createMoneyFeedback({
         host,
         balanceNode,
         reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches,
-      });
+        });
+      }
       state.finances.transactions.forEach((transaction) => {
         if (seenTransactions.has(transaction.id)) return;
         seenTransactions.add(transaction.id);
-        moneyFeedback.enqueue(transaction);
+        if(transaction.amount) moneyFeedback.enqueue(transaction);
       });
     }
     maybeLaunchChase();
@@ -93,7 +97,7 @@ function render(extra = {}) {
         if (left === 0) { clearInterval(examTimer); dispatch("EXAM_TIMEOUT"); }
       }, 250);
     }
-  }
+  } else {moneyFeedback?.destroy();moneyFeedback=null;moneyFeedbackHost=null;}
 }
 
 function maybeLaunchChase() {
@@ -163,6 +167,7 @@ async function dispatch(action, payload = {}) {
     return;
   }
   if (action === "CONTINUE_LIFE") {
+    if(state.betting.pendingResult) await commit(completeBet(state).state);
     if (state.dailyState.phase === "morning") await commit(startDay(state));
     screen = "game";
     render({ focusTarget: "#today-title" });
@@ -253,19 +258,29 @@ async function dispatch(action, payload = {}) {
     render({ focusTarget: "#today-title" });
     return;
   }
+  if(action==='STAY_HOME_TODAY') {
+    await commit(stayHomeToday(state));
+    render({focusTarget:'#today-title'});return;
+  }
   if (action === "RESOLVE_WORK") {
     await commit(resolveWork(state, payload.id));
     render({ focusTarget: "#today-title" });
     return;
   }
   if (action === "PLACE_BET" || action === "BET_ALL") {
-    const result = placeBet(state, action === "BET_ALL" ? state.finances.cash : payload.amount);
+    const result = beginBet(state, action === "BET_ALL" ? state.finances.cash : payload.amount);
     if (!result.ok) { error = result.reason; render(); return; }
-    const saved = await commit(result.state);
-    if (!saved) { render(); return; }
     slotsSpinning = true;
+    const saved = await commit(result.state);
+    if (!saved) { slotsSpinning=false;render(); return; }
     render();
-    await new Promise(resolve => setTimeout(resolve, matchMedia("(prefers-reduced-motion: reduce)").matches ? 150 : 1200));
+    const outcome=state.betting.pendingResult;
+    const reduced=matchMedia("(prefers-reduced-motion: reduce)").matches;
+    for(let index=0;index<3;index++) {
+      await new Promise(resolve=>setTimeout(resolve,reduced?50:index===0?800:200));
+      renderer.stopSlotReel(index,outcome.reels[index]);
+    }
+    await commit(completeBet(state).state);
     slotsSpinning = false;
     render();
     return;
@@ -295,7 +310,7 @@ async function dispatch(action, payload = {}) {
     const result = hireEmployee(state, payload.id);
     if (!result.ok) error = result.reason === "staff-limit" ? "Your business has reached its staff limit. Buy equipment to expand." : "You cannot hire that person right now.";
     else await commit(result.state);
-    render();
+    render({announcement:result.ok?'Helper hired. Their wages are charged on operating days.':''});
     return;
   }
   if (action === "BUY_ASSET") {

@@ -33,11 +33,11 @@ export function settleHouseholdDay(state) {
   let next = settleStokvelPayout(state);
   const day = next.calendar.day;
   const cost = 25 + (day % 7 === 0 ? 70 : 0) + (day % 30 === 0 ? 450 : 0);
-  next = applyEffects(next, { cash: -cost }, { source: 'living-costs' }).state;
+  next = applyEffects(next, { cash: -cost }, { source: 'living-costs',breakdown:[{label:'Food',amount:-25},...(day%7===0?[{label:'Electricity',amount:-70}]:[]),...(day%30===0?[{label:'Housing',amount:-450}]:[])] }).state;
   next = settleVehicleDay(next);
   next.household.lastSettledDay = day;
   next.household.lastCost = cost;
-  next.dailyState.result = `${next.dailyState.result || ''} Living costs: R${cost}${day % 30 === 0 ? ' including housing' : ''}${day % 7 === 0 ? ' including electricity' : ''}.${next.finances.cash < 0 ? ' Your negative balance is money you owe.' : ''}`.trim();
+  if (!next.dailyState.result) next.dailyState.result = 'You finish the day. Today’s money movements are listed below.';
   next.finances.netWorth = calculateNetWorth(next);
   return next;
 }

@@ -106,7 +106,7 @@ export function resolveOwnerChoice(state, eventId, choiceId, { random = Math.ran
   let next = clone(state);
   const business = choice.effects?.business || {};
   if (business.trust) next.business.trust = clamp(next.business.trust + business.trust);
-  const applied = applyEffects(next, choice.effects || {}, { source: eventId });
+  const applied = applyEffects(next, choice.effects || {}, { source: eventId, label: choice.label });
   next = applied.state;
   next.business.completedDecisionIds.push(eventId);
   next = scheduleChoiceConsequence(next, eventId, choice, random);
@@ -133,7 +133,7 @@ export function settleBusinessDay(state, { day = state.calendar.day, operating =
     if (fleet) fleet.salesTotal += fleetGross - Math.round(fleetGross * (next.business.id === "buy-resell" ? 0.55 : 0.25));
     const net = gross - supplies - overhead - wages;
     Object.assign(status, { gross, supplies, overhead, wages });
-    const settled = applyEffects(next, { cash: net, stats: { energy: -9 } }, { source: "business-income" });
+    const settled = applyEffects(next, { cash: net, stats: { energy: -9 } }, { source: "business-income", label:'Business sales after costs', breakdown:[{label:'Customer sales',amount:gross},{label:'Supplies',amount:-supplies},{label:'Staff wages',amount:-wages},{label:'Business overhead',amount:-overhead}] });
     next = settled.state;
     transactions = settled.transactions;
     status.revenue = net;

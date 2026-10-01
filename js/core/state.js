@@ -56,12 +56,13 @@ export function createDefaultState() {
     },
     household: { lastSettledDay: 0, lastCost: 0 },
     stokvel: { balance: 0, contributions: [], lastPaidCycle: -1, lastPayout: null },
-    betting: { lastResult: null, totalStaked: 0, totalPaid: 0, rounds: 0 },
+    betting: { lastResult: null, pendingResult: null, totalStaked: 0, totalPaid: 0, rounds: 0 },
     finances: {
       cash: 350,
       netWorth: 350,
       transactions: [],
       lastTransactionId: 0,
+      dailyLedger: null,
     },
     career: {
       active: false,
@@ -137,6 +138,7 @@ export function createDefaultState() {
       travelResolved: false,
       updates: [],
       dayPlan: null,
+      scheduledActivity: null,
       settledIds: [],
       result: null,
       chase: null,
@@ -221,7 +223,7 @@ export function applyEffects(state, effects = {}, meta = {}) {
   if (effects.relationships) addRelationshipEffects(next, effects.relationships);
 
   const cashAmount = Number(effects.cash || 0);
-  if (cashAmount) {
+  if (cashAmount || meta.breakdown?.some(row=>row.amount)) {
     const transactionNumber = (Number(next.finances.lastTransactionId) || 0) + 1;
     next.finances.lastTransactionId = transactionNumber;
     next.finances.cash = Math.round((Number(next.finances.cash) || 0) + cashAmount);
@@ -230,8 +232,15 @@ export function applyEffects(state, effects = {}, meta = {}) {
       amount: Math.round(cashAmount),
       balance: next.finances.cash,
       source: String(meta.source || "life"),
+      ...(meta.label ? {label:String(meta.label)} : {}),
+      ...(Array.isArray(meta.breakdown) ? {breakdown:clone(meta.breakdown)} : {}),
       day: Number(next.calendar.day) || 1,
     };
+    if(!next.finances.dailyLedger || next.finances.dailyLedger.day!==transaction.day) {
+      next.finances.dailyLedger={day:transaction.day,entries:[]};
+      for(const prior of next.finances.transactions.filter(item=>item.day===transaction.day)) addLedgerTransaction(next.finances.dailyLedger,prior);
+    }
+    addLedgerTransaction(next.finances.dailyLedger,transaction);
     next.finances.transactions.push(transaction);
     next.finances.transactions = next.finances.transactions.slice(-60);
     transactions.push(transaction);
@@ -239,6 +248,16 @@ export function applyEffects(state, effects = {}, meta = {}) {
 
   next.finances.netWorth = calculateNetWorth(next);
   return { state: next, transactions };
+}
+
+function addLedgerTransaction(ledger,tx) {
+  const rows=tx.breakdown || [{label:tx.label,amount:tx.amount}];
+  for(const row of rows) {
+    if(!row.amount) continue;
+    const entry=ledger.entries.find(item=>item.source===tx.source && item.label===row.label && Math.sign(item.amount)===Math.sign(row.amount));
+    if(entry) entry.amount+=row.amount;
+    else ledger.entries.push({source:tx.source,...(row.label?{label:row.label}:{}),amount:row.amount});
+  }
 }
 
 function copyKnown(defaultValue, candidateValue) {
@@ -280,6 +299,8 @@ function normaliseTransactions(value) {
     amount: Math.round(Number(item.amount)),
     balance: Math.round(Number(item.balance)),
     source: String(item.source || "life"),
+    ...(typeof item.label === 'string' ? {label:item.label.slice(0,220)} : {}),
+    ...(Array.isArray(item.breakdown) && item.breakdown.every(row=>row && typeof row.label==='string' && Number.isFinite(row.amount)) && item.breakdown.reduce((sum,row)=>sum+row.amount,0)===Math.round(Number(item.amount)) ? {breakdown:item.breakdown.map(row=>({label:row.label.slice(0,100),amount:Math.round(row.amount)}))} : {}),
     day: Math.max(1, Math.round(Number(item.day) || 1)),
   }));
 }
@@ -323,6 +344,9 @@ export function validateState(candidate) {
 
   state.finances.cash = Math.round(Number(state.finances.cash) || 0);
   state.finances.transactions = normaliseTransactions(source.finances?.transactions);
+  const ledger=source.finances?.dailyLedger;
+  state.finances.dailyLedger=ledger && Number.isSafeInteger(ledger.day) && Array.isArray(ledger.entries)
+    ? {day:ledger.day,entries:ledger.entries.filter(row=>row && Number.isSafeInteger(row.amount) && typeof row.source==='string').map(row=>({source:row.source,amount:row.amount,...(typeof row.label==='string'?{label:row.label.slice(0,220)}:{})}))} : null;
   state.finances.lastTransactionId = Math.max(
     Number(source.finances?.lastTransactionId) || 0,
     ...state.finances.transactions.map((item) => Number(item.id.replace(/^tx-/, "")) || 0),

@@ -2,6 +2,9 @@ import { formatRand } from "../data/economy.js";
 import { validateName } from "../core/state.js";
 import { BUSINESS_UPGRADES } from "../systems/business.js";
 import { buildPhoneModel, renderPhone } from "./phone.js";
+import {canStayHomeToday} from '../systems/day.js';
+import {buildMoneyReport} from './money-ledger.js';
+import {patchChildren} from './dom-patch.js';
 
 const GENDER_IDS = new Set(["man", "woman", "non-binary"]);
 
@@ -215,7 +218,8 @@ function gameMarkup(state, context) {
       <section class="personal-stats" aria-label="Personal stats">
         ${["health", "happiness", "knowledge", "social", "reputation", "luck"].map((key) => `<div class="stat-tile stat-tile--${key}"><span>${key.toUpperCase()}</span><strong>${view.hud[key]}<small>/100</small></strong><div class="stat-meter" aria-hidden="true"><i style="width:${Math.max(0, Math.min(100, Number(view.hud[key]) || 0))}%"></i></div></div>`).join("")}
       </section>
-      <main class="play-column">${!state.life.ended && state.dailyState.dayPlan ? `<section class="day-plan" aria-label="Morning plan"><span>☀ MORNING</span><p>${escapeText(state.dailyState.dayPlan.morning)}</p></section>` : ''}${(state.dailyState.updates || []).length ? `<section class="life-news" aria-label="Today’s news">${state.dailyState.updates.slice(0,3).map(text=>`<p>${escapeText(text)}</p>`).join("")}</section>` : ""}${state.life.ended ? endingMarkup(state.life.endingSummary) : eventMarkup(context.event)}
+      <main class="play-column">${!state.life.ended && state.dailyState.dayPlan ? `<section class="day-plan" aria-label="Morning plan"><span>☀ MORNING</span><p>${escapeText(state.dailyState.dayPlan.morning)}</p>${canStayHomeToday(state) ? `<button class="stay-home-action" type="button" data-action="STAY_HOME_TODAY">Stay home today <small>${state.career.active ? "No shift pay · Attendance matters" : "Less business capacity today"}</small></button>` : ''}</section>` : ''}${(state.dailyState.updates || []).length ? `<section class="life-news" aria-label="Today’s news">${state.dailyState.updates.slice(0,3).map(text=>`<p>${escapeText(text)}</p>`).join("")}</section>` : ""}${state.life.ended ? endingMarkup(state.life.endingSummary) : eventMarkup(context.event)}
+        ${state.life.stage==='school-finale' || state.life.ended ? '' : moneyReportMarkup(state)}
         ${state.life.ended ? "" : `<button class="button button--primary button--wide next-day" type="button" data-action="NEXT_DAY" ${context.canAdvance ? "" : "disabled"}>${escapeText(context.nextLabel || "FINISH TODAY FIRST")}</button>
         <button class="phone-launch" type="button" data-action="OPEN_PHONE" aria-haspopup="dialog"><span aria-hidden="true">📱</span><strong>PHONE</strong><small>${phoneModel.notifications.length ? escapeText(phoneModel.notifications[0].text) : "Apps, people & plans"}</small></button>`}
       </main>
@@ -223,6 +227,12 @@ function gameMarkup(state, context) {
       <p class="app-error" role="alert">${escapeText(context.error || "")}</p>
       <p class="sr-only" id="appStatus" aria-live="polite">${escapeText(context.announcement || "")}</p>
     </div>`;
+}
+
+export function moneyReportMarkup(state,{recent=false}={}) {
+  const report=buildMoneyReport(state,{recent});
+  const groups=[{label:'Money in',positive:true},{label:'Money out',positive:false}];
+  return `<section class="money-report" aria-label="${recent?'Recent money movements':'Today’s money'}" data-card-id="money-report-${state.calendar.day}"><h3>${recent?'Recent money movements':'Today’s money'}</h3><div class="money-totals"><span>IN <strong>+${formatRand(report.moneyIn)}</strong></span><span>OUT <strong>−${formatRand(report.moneyOut)}</strong></span><span>NET <strong>${formatRand(report.net)}</strong></span></div><details><summary>See where it came from and went</summary>${groups.map(group=>`<div class="money-group"><h4>${group.label}</h4>${report.rows.filter(row=>(row.amount>0)===group.positive).map(row=>`<div class="money-row"><span>${recent?'Day '+row.day+' · ':''}${escapeText(row.label)}</span><strong class="${row.amount>0?'money-in':'money-out'}">${row.amount>0?'+':'−'}${formatRand(Math.abs(row.amount))}</strong></div>`).join('') || '<p>No movements recorded.</p>'}</div>`).join('')}</details>${state.finances.cash<0?'<p class="money-debt">Your negative balance is money you owe.</p>':''}</section>`;
 }
 
 export function createRenderer({ root, dispatch }) {
@@ -271,10 +281,17 @@ export function createRenderer({ root, dispatch }) {
           buildSetupModel({ ...draft, hasSave: context.hasSave }),
           context.recoveryMessage || context.error || "",
         );
-      } else root.innerHTML = gameMarkup(state, context);
+      } else {
+        const markup=gameMarkup(state,context);
+        if(root.querySelector('.game-shell') && root.ownerDocument?.createElement) {
+          const template=root.ownerDocument.createElement('div');template.innerHTML=markup;
+          patchChildren(root,template);
+        } else root.innerHTML=markup;
+      }
       if (context.focusTarget) root.querySelector?.(context.focusTarget)?.focus?.({ preventScroll: true });
     },
     announce(message) { const node = root.querySelector("#appStatus"); if (node) node.textContent = message; },
+    stopSlotReel(index,symbol) {const reel=root.querySelector('.slot-reel--'+index);if(reel) {reel.innerHTML='<span>'+escapeText(symbol)+'</span>';reel.classList.add('slot-reel--stopped');}},
     openPanel(id) { dispatch("OPEN_PANEL", { panel: id }); },
     destroy() {
       destroyed = true;

@@ -128,7 +128,7 @@ export function resolveCareerChoice(state, eventId, choiceId, { random = Math.ra
   const choice = event?.choices.find((item) => item.id === choiceId);
   if (!choice) return { state, status: { valid: false }, transactions: [] };
   let next = applyCareerValues(state, choice.effects?.career);
-  const applied = applyEffects(next, choice.effects || {}, { source: eventId });
+  const applied = applyEffects(next, choice.effects || {}, { source: eventId, label: choice.label });
   next = applied.state;
   const consequence = choice.risk
     ? assessWorkConsequence(next, { ...choice.risk, random })

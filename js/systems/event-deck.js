@@ -106,7 +106,7 @@ export function resolveDueEvents(state, day) {
     for (const key of ["performance", "boss", "coworkers", "readiness"]) {
       if (effects.career?.[key]) next.career[key] = Math.max(0, Math.min(100, next.career[key] + effects.career[key]));
     }
-    next = applyEffects(next, effects, { source: item.eventId + "-consequence" }).state;
+    next = applyEffects(next, effects, { source: item.eventId + "-consequence",label:item.payload?.cause ? 'Earlier choice: '+item.payload.cause : 'Earlier decision consequence' }).state;
     resolved.add(item.outcomeId);
   });
   next.eventHistory.resolvedOutcomeIds = [...resolved].slice(-100);

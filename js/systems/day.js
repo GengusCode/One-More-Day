@@ -51,6 +51,7 @@ function resetDailyState(state) {
     stayedHome: false,
     updates: [],
     dayPlan: null,
+    scheduledActivity: null,
     settledIds: [],
     result: null,
     chase: null,
@@ -71,11 +72,11 @@ function dueActivity(state) {
   return (state.routine?.pending || []).find(item => {
     const event = getEventById(item.eventId);
     return event && item.dueDay <= state.calendar.day && isEventEligible(event,state)
-      && (!['owner','corporate'].includes(event.deck) || (isWorkingDay(state) && hasPath(state)));
+      && (!['owner','corporate'].includes(event.deck) || (isWorkingDay(state) && hasPath(state) && !state.dailyState.stayedHome));
   });
 }
 
-function applyDomainEffects(state, effects = {}) {
+function applyDomainEffects(state, effects = {}, meta = {}) {
   let next = clone(state);
   const career = effects.career || {};
   const business = effects.business || {};
@@ -83,7 +84,7 @@ function applyDomainEffects(state, effects = {}) {
     if (career[key]) next.career[key] = clamp(next.career[key] + Number(career[key]));
   }
   if (business.trust) next.business.trust = clamp(next.business.trust + Number(business.trust));
-  const applied = applyEffects(next, effects, { source: "event" });
+  const applied = applyEffects(next, effects, { source: "event", ...meta });
   return { state: applied.state, transactions: applied.transactions };
 }
 
@@ -166,16 +167,12 @@ function prepareActivity(state, random) {
       : ['A day off gives you time for home, errands and the people in your life.', 'There is no scheduled shift today. You have room for your own plans.', 'You start a free day with some rest and a few things to sort out.'][next.calendar.day % 3],
     cause:'', fortune:null,
   };
-  if (next.dailyState.needsTravel) {
-    const options = getTravelOptions(next, {});
-    const mode = options.some(item=>item.id==='bicycle') ? 'bicycle' : options.some(item=>item.id==='taxi') ? 'taxi' : null;
-    if (mode) { next = resolveTravel(next,mode,{}).state; next.dailyState.travelResolved = true; }
-  }
   // A commitment takes priority over a fresh random situation.
   const pending = next.routine.pending || [];
   next.routine.pending = pending.filter(item => getEventById(item.eventId));
   const due = dueActivity(next);
   if (due) {
+    next.dailyState.scheduledActivity = due;
     next.routine.pending = next.routine.pending.filter(item => item !== due);
     next.dailyState.dayPlan.kind = 'follow-up';
     next.dailyState.dayPlan.cause = due.cause;
@@ -230,6 +227,40 @@ function beginWork(state) {
   }
   next.dailyState.workDecisionId = null;
   return resolveWork(next, "");
+}
+
+function settleCommute(state) {
+  if (state.dailyState.travelResolved || state.dailyState.stayedHome || !state.dailyState.needsTravel) return state;
+  const options = getTravelOptions(state,{});
+  const mode = ['bicycle','car','taxi'].find(id=>options.some(item=>item.id===id));
+  if (!mode) return state;
+  const next = resolveTravel(state,mode,{}).state;
+  next.dailyState.travelResolved = true;
+  return next;
+}
+
+export function canStayHomeToday(state) {
+  return isWorkingDay(state) && hasPath(state) && !state.dailyState.stayedHome && !state.dailyState.travelResolved
+    && ['headline','work','travel'].includes(state.dailyState.phase);
+}
+
+export function stayHomeToday(state, {random=Math.random} = {}) {
+  if (!canStayHomeToday(state)) return state;
+  let next=resolveTravel(state,'stay-home',{calledAhead:true}).state;
+  next.dailyState.stayedHome=true;
+  next.dailyState.travelResolved=true;
+  next.dailyState.needsTravel=false;
+  if (next.dailyState.scheduledActivity) next.routine.pending.push(next.dailyState.scheduledActivity);
+  next.dailyState.scheduledActivity=null;
+  next.dailyState.workDecisionId=null;
+  next.dailyState.dayPlan={kind:'routine',moment:'AT HOME',morning:next.career.active?'You let work know you are staying home. There is no shift pay today, and your attendance affects your performance.':'You stay home today. Your business has less capacity without you.',cause:'',fortune:null};
+  const homeDue=dueActivity(next);
+  if(homeDue && !['owner','corporate'].includes(getEventById(homeDue.eventId).deck)) {
+    next.routine.pending=next.routine.pending.filter(item=>item!==homeDue);
+    next.dailyState.dayPlan.cause=homeDue.cause;
+    return setHeadline(next,getEventById(homeDue.eventId),random);
+  }
+  return drawHeadline(next,random,{excludeTransport:true,decks:['community','relationships','money']});
 }
 
 function needsTravelAfterChoice(choice) {
@@ -291,7 +322,7 @@ function applyEventChoice(state, event, choice, random) {
     if (!contribution.ok) { next.dailyState.result = "You cannot afford this contribution, or this month is already paid."; return next; }
     next = contribution.state;
   }
-  next = applyDomainEffects(next, choice.effects || {}).state;
+  next = applyDomainEffects(next, choice.effects || {}, {source:event.id,label:choice.label}).state;
   next = scheduleChoiceConsequence(next, event.id, choice, random);
   if (choice.nextActivity) {
     const follow = choice.nextActivity;
@@ -341,6 +372,7 @@ export function choosePath(state, pathId, { random = Math.random } = {}) {
 
 export function chooseTravel(state, optionId) {
   if (state.dailyState.phase !== "travel") return state;
+  if (optionId === 'stay-home') return stayHomeToday(state);
   let next = resolveTravel(state, optionId, state.dailyState.travelContext || {}).state;
   next.dailyState.stayedHome = optionId === "stay-home";
   next.dailyState.travelResolved = true;
@@ -377,6 +409,7 @@ export function chooseEvent(state, eventId, choiceId, { random = Math.random } =
 export function resolveWork(state, choiceId, { random = Math.random } = {}) {
   if (state.dailyState.phase === "complete") return state;
   let next = clone(state);
+  next = settleCommute(next);
   if (next.dailyState.phase === "work" && next.dailyState.workDecisionId && choiceId) {
     const result = next.career.active
       ? resolveCareerChoice(next, next.dailyState.workDecisionId, choiceId, { random })
@@ -391,15 +424,6 @@ export function resolveWork(state, choiceId, { random = Math.random } = {}) {
         ? settleBusinessDay(next, { day: next.calendar.day, operating: true, random })
         : { state: next };
     next = result.state;
-    const income = result.transactions?.find((item) => ["salary", "business-income"].includes(item.source));
-    if (income) {
-      const receipt = income.source === "salary"
-        ? `Your shift paid ${formatRand(income.amount)}.`
-        : income.amount >= 0
-          ? `Today's business sales left ${formatRand(income.amount)} after supplies, overhead and staff wages.`
-          : `Today's business costs exceeded sales by ${formatRand(-income.amount)}.`;
-      next.dailyState.result = [next.dailyState.result, receipt].filter(Boolean).join(" ");
-    }
   }
   return finishDay(next);
 }
