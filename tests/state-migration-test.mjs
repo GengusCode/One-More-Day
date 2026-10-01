@@ -49,8 +49,10 @@ test("gender changes pronouns but not starting statistics", () => {
   const man = createNewLife({ name: "Kabelo", gender: "man" });
   const woman = createNewLife({ name: "Ayesha", gender: "woman" });
   const nonBinary = createNewLife({ name: "Lethabo", gender: "non-binary" });
-  assert.deepEqual(man.stats, woman.stats);
-  assert.deepEqual(woman.stats, nonBinary.stats);
+  const comparable = stats => Object.fromEntries(Object.entries(stats).filter(([key]) => key !== 'luck'));
+  assert.deepEqual(comparable(man.stats), comparable(woman.stats));
+  assert.deepEqual(comparable(woman.stats), comparable(nonBinary.stats));
+  for (const life of [man,woman,nonBinary]) assert.ok(life.stats.luck >= 25 && life.stats.luck <= 75);
   assert.equal(man.profile.pronouns.subject, "he");
   assert.equal(woman.profile.pronouns.subject, "she");
   assert.equal(nonBinary.profile.pronouns.subject, "they");

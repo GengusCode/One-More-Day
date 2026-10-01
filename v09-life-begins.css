@@ -53,7 +53,7 @@ body{
 .personal-stats span{display:block;color:#58675e;font-size:.875rem;font-weight:700}
 .personal-stats strong{display:block;margin-top:3px;color:#1e3028;font-size:1rem}
 .personal-stats small{margin-left:3px;color:#647069;font-size:.875rem;font-weight:500}
-@media(min-width:600px){.personal-stats{grid-template-columns:repeat(5,minmax(0,1fr))}}
+@media(min-width:600px){.personal-stats{grid-template-columns:repeat(6,minmax(0,1fr))}}
 .event-card{
   position:relative;
   overflow:hidden;
@@ -193,3 +193,9 @@ body{
 .garage-vehicle strong,.garage-vehicle small { display:block; }
 .garage-vehicle small { margin-top:6px; line-height:1.5; }
 .garage-empty { padding:20px; border:2px dashed #90a4b8; border-radius:14px; color:#50647b; text-align:center; }
+
+/* Short daily context: no extra interaction between morning and evening. */
+.stat-tile--luck{--stat-colour:#ad6518;--stat-bg:#ffecd3}
+.day-plan{padding:12px 15px;margin-bottom:12px;border-radius:14px;border:1px solid #d9e5da;background:#f1f7ef}
+.day-plan span{font-size:.75rem;letter-spacing:.06em;font-weight:800;color:#496740}
+.day-plan p{margin:5px 0 0;font-size:.9rem;line-height:1.45;color:#344b38}

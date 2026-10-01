@@ -37,6 +37,7 @@ export function buildGameViewModel(state) {
       knowledge: state.stats.knowledge,
       social: state.stats.social,
       reputation: state.stats.reputation,
+      luck: state.stats.luck ?? 50,
     },
   };
 }
@@ -212,9 +213,9 @@ function gameMarkup(state, context) {
         <div><span>ENERGY</span><strong>${view.hud.energy}</strong></div>
       </section>
       <section class="personal-stats" aria-label="Personal stats">
-        ${["health", "happiness", "knowledge", "social", "reputation"].map((key) => `<div class="stat-tile stat-tile--${key}"><span>${key.toUpperCase()}</span><strong>${view.hud[key]}<small>/100</small></strong><div class="stat-meter" aria-hidden="true"><i style="width:${Math.max(0, Math.min(100, Number(state.stats[key]) || 0))}%"></i></div></div>`).join("")}
+        ${["health", "happiness", "knowledge", "social", "reputation", "luck"].map((key) => `<div class="stat-tile stat-tile--${key}"><span>${key.toUpperCase()}</span><strong>${view.hud[key]}<small>/100</small></strong><div class="stat-meter" aria-hidden="true"><i style="width:${Math.max(0, Math.min(100, Number(view.hud[key]) || 0))}%"></i></div></div>`).join("")}
       </section>
-      <main class="play-column">${(state.dailyState.updates || []).length ? `<section class="life-news" aria-label="Today’s news">${state.dailyState.updates.slice(0,3).map(text=>`<p>${escapeText(text)}</p>`).join("")}</section>` : ""}${state.life.ended ? endingMarkup(state.life.endingSummary) : eventMarkup(context.event)}
+      <main class="play-column">${!state.life.ended && state.dailyState.dayPlan ? `<section class="day-plan" aria-label="Morning plan"><span>☀ MORNING</span><p>${escapeText(state.dailyState.dayPlan.morning)}</p></section>` : ''}${(state.dailyState.updates || []).length ? `<section class="life-news" aria-label="Today’s news">${state.dailyState.updates.slice(0,3).map(text=>`<p>${escapeText(text)}</p>`).join("")}</section>` : ""}${state.life.ended ? endingMarkup(state.life.endingSummary) : eventMarkup(context.event)}
         ${state.life.ended ? "" : `<button class="button button--primary button--wide next-day" type="button" data-action="NEXT_DAY" ${context.canAdvance ? "" : "disabled"}>${escapeText(context.nextLabel || "FINISH TODAY FIRST")}</button>
         <button class="phone-launch" type="button" data-action="OPEN_PHONE" aria-haspopup="dialog"><span aria-hidden="true">📱</span><strong>PHONE</strong><small>${phoneModel.notifications.length ? escapeText(phoneModel.notifications[0].text) : "Apps, people & plans"}</small></button>`}
       </main>

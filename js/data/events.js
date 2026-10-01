@@ -1,4 +1,5 @@
 import { STORY_EVENTS, STORY_WORK_DECISIONS } from "./story-events.js";
+import { ROUTINE_EVENTS } from "./routine-events.js";
 const choice = (id, label, result, effects = {}, extra = {}) => ({ id, label, result, effects, ...extra });
 
 const EVERYDAY_EVENTS = [
@@ -113,6 +114,7 @@ const EVERYDAY_EVENTS = [
 ];
 
 export const EVENTS = Object.freeze([
+  ...ROUTINE_EVENTS,
   ...EVERYDAY_EVENTS,
   ...STORY_EVENTS,
   {

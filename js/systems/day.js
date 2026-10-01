@@ -21,6 +21,8 @@ const clone = (value) => (
   typeof structuredClone === "function" ? structuredClone(value) : JSON.parse(JSON.stringify(value))
 );
 const clamp = (value) => Math.max(0, Math.min(100, Number(value) || 0));
+const BAD_SURPRISES = new Set(['phone-theft', 'water-off', 'loadshedding-deadline', 'rain-on-wash-day']);
+const surpriseType = event => event.surprise || (event.id === 'lost-wallet' ? 'good' : BAD_SURPRISES.has(event.id) ? 'bad' : null);
 
 function shuffleIds(items, random = Math.random) {
   const ids = items.map((item) => item.id);
@@ -48,6 +50,7 @@ function resetDailyState(state) {
     travelResolved: false,
     stayedHome: false,
     updates: [],
+    dayPlan: null,
     settledIds: [],
     result: null,
     chase: null,
@@ -62,6 +65,14 @@ function isWorkingDay(state) {
 
 function hasPath(state) {
   return state.career.active || state.business.active;
+}
+
+function dueActivity(state) {
+  return (state.routine?.pending || []).find(item => {
+    const event = getEventById(item.eventId);
+    return event && item.dueDay <= state.calendar.day && isEventEligible(event,state)
+      && (!['owner','corporate'].includes(event.deck) || (isWorkingDay(state) && hasPath(state)));
+  });
 }
 
 function applyDomainEffects(state, effects = {}) {
@@ -88,8 +99,12 @@ function setHeadline(state, event, random) {
   return next;
 }
 
-function drawHeadline(state, random, { transportOnly = false, excludeTransport = false } = {}) {
+function drawHeadline(state, random, { transportOnly = false, excludeTransport = false, decks = null, fortune = null } = {}) {
   const eligible = EVENTS.filter((event) => {
+    if (event.followUpOnly) return false;
+    if (fortune ? surpriseType(event) !== fortune : surpriseType(event)) return false;
+    if (decks && !decks.includes(event.deck)) return false;
+    if (event.choices.some(choice => choice.nextActivity && (state.routine?.pending || []).some(item => item.eventId === choice.nextActivity.eventId))) return false;
     if (transportOnly && event.deck !== "transport") return false;
     if (excludeTransport && event.deck === "transport") return false;
     return isEventEligible(event, state);
@@ -100,7 +115,7 @@ function drawHeadline(state, random, { transportOnly = false, excludeTransport =
     return next;
   }
   const ids = eligible.map((event) => event.id);
-  const deckKey = transportOnly ? "transport" : "headline";
+  const deckKey = fortune ? 'surprise-' + fortune : decks ? 'routine-' + decks.join('-') : transportOnly ? "transport" : "headline";
   const deck = state.eventDecks[deckKey] || createDeckState(ids, random);
   const drawn = drawEvent({
     deckState: deck,
@@ -118,9 +133,8 @@ function drawHeadline(state, random, { transportOnly = false, excludeTransport =
 function assignWorkDecision(state, random) {
   const next = clone(state);
   if (!isWorkingDay(next) || !hasPath(next)) return next;
-  if (random() >= 0.42) return next;
   const path = next.career.active ? "career" : "business";
-  const choices = WORK_DECISIONS.filter((item) => item.path === path && isEventEligible(item, next)).map((item) => item.id);
+  const choices = WORK_DECISIONS.filter((item) => item.path === path && item.id !== 'owner-equipment' && isEventEligible(item, next)).map((item) => item.id);
   if (!choices.length) return next;
   const deckKey = "work-" + path;
   const drawn = drawEvent({
@@ -142,14 +156,53 @@ function enterTravel(state, context, afterTravel) {
 }
 
 function prepareActivity(state, random) {
-  let next = assignWorkDecision(state, random);
+  let next = clone(state);
+  next.routine ||= {lastSurpriseDay:0,pending:[]};
+  const working = isWorkingDay(next) && hasPath(next);
+  next.dailyState.dayPlan = {
+    kind:'routine', moment: working ? 'AT WORK' : 'YOUR FREE TIME',
+    morning: working
+      ? next.career.active ? `You get ready for your shift as ${next.career.role || 'an employee'}.` : 'You get ready to serve today’s customers and manage your business.'
+      : ['A day off gives you time for home, errands and the people in your life.', 'There is no scheduled shift today. You have room for your own plans.', 'You start a free day with some rest and a few things to sort out.'][next.calendar.day % 3],
+    cause:'', fortune:null,
+  };
   if (next.dailyState.needsTravel) {
     const options = getTravelOptions(next, {});
     const mode = options.some(item=>item.id==='bicycle') ? 'bicycle' : options.some(item=>item.id==='taxi') ? 'taxi' : null;
     if (mode) { next = resolveTravel(next,mode,{}).state; next.dailyState.travelResolved = true; }
   }
-  if (next.dailyState.workDecisionId) { next.dailyState.phase = 'work'; return next; }
-  return drawHeadline(next,random,{excludeTransport:true});
+  // A commitment takes priority over a fresh random situation.
+  const pending = next.routine.pending || [];
+  next.routine.pending = pending.filter(item => getEventById(item.eventId));
+  const due = dueActivity(next);
+  if (due) {
+    next.routine.pending = next.routine.pending.filter(item => item !== due);
+    next.dailyState.dayPlan.kind = 'follow-up';
+    next.dailyState.dayPlan.cause = due.cause;
+    if (working && !['owner','corporate'].includes(getEventById(due.eventId).deck)) next.dailyState.dayPlan.moment = 'AFTER WORK';
+    return setHeadline(next,getEventById(due.eventId),random);
+  }
+  // Surprises remain rare at any luck level, with at least a week between them.
+  if (next.calendar.day - next.routine.lastSurpriseDay >= 7 && random() < .06) {
+    const fortune = random() < .2 + .6 * clamp(next.stats.luck ?? 50) / 100 ? 'good' : 'bad';
+    const surprised = drawHeadline(next,random,{excludeTransport:true,fortune});
+    if (surprised.dailyState.activeEventId) {
+      surprised.routine.lastSurpriseDay = next.calendar.day;
+      surprised.dailyState.dayPlan.kind = 'surprise';
+      surprised.dailyState.dayPlan.fortune = fortune;
+      surprised.dailyState.dayPlan.moment = 'AN UNPLANNED MOMENT';
+      return surprised;
+    }
+  }
+  if (working && random() < .8) {
+    if (random() < .75) {
+      next = assignWorkDecision(next,random);
+      if (next.dailyState.workDecisionId) {next.dailyState.phase='work';return next;}
+    }
+    return drawHeadline(next,random,{excludeTransport:true,decks:[next.career.active ? 'corporate' : 'owner']});
+  }
+  next.dailyState.dayPlan.moment = working ? 'AFTER WORK' : 'YOUR FREE TIME';
+  return drawHeadline(next,random,{excludeTransport:true,decks:['community','relationships','money','opportunity']});
 }
 
 function finishDay(state) {
@@ -240,6 +293,14 @@ function applyEventChoice(state, event, choice, random) {
   }
   next = applyDomainEffects(next, choice.effects || {}).state;
   next = scheduleChoiceConsequence(next, event.id, choice, random);
+  if (choice.nextActivity) {
+    const follow = choice.nextActivity;
+    next.routine ||= {lastSurpriseDay:0,pending:[]};
+    if (!next.routine.pending.some(item => item.eventId === follow.eventId)) {
+      const days = follow.minDays + Math.floor(random() * (follow.maxDays - follow.minDays + 1));
+      next.routine.pending.push({eventId:follow.eventId,dueDay:next.calendar.day+days,cause:choice.result});
+    }
+  }
   next.dailyState.result = choice.result || "";
   return next;
 }
@@ -428,6 +489,10 @@ export function settleRoutineDay(state, { random = Math.random, driverMode = fal
     };
   }
 
+  if (dueActivity(next)) {
+    return {state:startDay(next,{random}),transactions:[],interrupted:true,reason:'planned-commitment'};
+  }
+
   next = applyEffects(next, { stats: { energy: 12 } }, { source: "routine-recovery" }).state;
   const due = resolveDueEvents(next, next.calendar.day);
   next = due.state;
@@ -508,6 +573,8 @@ export function getCurrentDecision(state) {
     const order = state.dailyState.choiceOrder;
     return {
       ...event,
+      kicker: [state.dailyState.dayPlan?.moment, event.kicker].filter(Boolean).join(' · '),
+      text: [state.dailyState.dayPlan?.cause ? `Because of your earlier decision: ${state.dailyState.dayPlan.cause}` : '',event.text].filter(Boolean).join(' '),
       result: state.dailyState.result || event.result,
       choices: order
         .map((id) => event.choices.find((item) => item.id === id))
@@ -533,7 +600,7 @@ export function getCurrentDecision(state) {
       icon: state.career.active ? "💼" : "🧰",
       kicker: state.career.active ? "WORK DECISION" : "OWNER DECISION",
       title: event.title,
-      text: "The outcome depends on more than one choice.",
+      text: state.career.active ? 'During your shift, this needs your attention. Your pay comes from your work, while this choice shapes how it goes.' : 'While serving today’s customers, this needs your attention. Sales still have to cover your supplies and expenses.',
       choices: event.choices.map((choice) => ({ ...choice, action: "RESOLVE_WORK" })),
     };
   }
@@ -546,7 +613,7 @@ export function getCurrentDecision(state) {
   }
   if (state.dailyState.phase === "complete" && state.dailyState.result) {
     return {
-      icon: "✓", kicker: "DAY COMPLETE", title: "That choice is now part of your story",
+      icon: "🌙", kicker: "EVENING · DAY COMPLETE", title: "How your day turned out",
       text: state.dailyState.result, choices: [],
     };
   }

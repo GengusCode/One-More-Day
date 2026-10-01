@@ -44,6 +44,7 @@ test("game view model exposes personal stats without relationship scores", () =>
     social: state.stats.social,
     happiness: state.stats.happiness,
     reputation: state.stats.reputation,
+    luck: state.stats.luck,
   });
   assert.equal(view.playerName, "Thando");
   assert.equal("relationships" in view.hud, false);

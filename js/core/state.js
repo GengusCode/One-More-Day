@@ -16,7 +16,7 @@ const GENDERS = Object.freeze({
 });
 
 const STAT_KEYS = Object.freeze([
-  "health", "energy", "knowledge", "social", "happiness", "reputation",
+  "health", "energy", "knowledge", "social", "happiness", "reputation", "luck",
 ]);
 
 const clone = (value) => (
@@ -52,6 +52,7 @@ export function createDefaultState() {
       social: 40,
       happiness: 68,
       reputation: 35,
+      luck: 50,
     },
     household: { lastSettledDay: 0, lastCost: 0 },
     stokvel: { balance: 0, contributions: [], lastPaidCycle: -1, lastPayout: null },
@@ -114,6 +115,7 @@ export function createDefaultState() {
       resolvedOutcomeIds: [],
     },
     eventDecks: {},
+    routine: { lastSurpriseDay: 0, pending: [] },
     delayedEvents: [],
     timeline: {
       lastSummary: null,
@@ -134,6 +136,7 @@ export function createDefaultState() {
       afterTravel: "headline",
       travelResolved: false,
       updates: [],
+      dayPlan: null,
       settledIds: [],
       result: null,
       chase: null,
@@ -165,6 +168,7 @@ export function createNewLife({ name, gender, previousQuizIds = [] }) {
   if (!checkedName.ok) throw new TypeError(checkedName.error);
   if (!Object.hasOwn(GENDERS, gender)) throw new TypeError("Choose a gender.");
   const state = createDefaultState();
+  state.stats.luck = 25 + Math.floor(Math.random() * 51);
   state.profile = {
     name: checkedName.value,
     gender,
@@ -312,6 +316,10 @@ export function validateState(candidate) {
     ? clone(source.life.endingSummary)
     : null;
   STAT_KEYS.forEach((key) => { state.stats[key] = clamp(state.stats[key]); });
+  state.routine.lastSurpriseDay = Math.max(0, Math.min(state.calendar.day, Math.round(Number(source.routine?.lastSurpriseDay) || 0)));
+  state.routine.pending = (Array.isArray(source.routine?.pending) ? source.routine.pending : [])
+    .filter(item => item && typeof item.eventId === 'string' && Number.isFinite(Number(item.dueDay)))
+    .slice(0, 12).map(item => ({ eventId: item.eventId, dueDay: Math.max(1, Math.round(Number(item.dueDay))), cause: String(item.cause || '').slice(0, 220) }));
 
   state.finances.cash = Math.round(Number(state.finances.cash) || 0);
   state.finances.transactions = normaliseTransactions(source.finances?.transactions);
