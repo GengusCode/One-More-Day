@@ -30,7 +30,7 @@ assert.equal(adult.life.school.step, "complete");
 assert.equal(adult.finances.cash, 1_000);
 
 const jobs = getAvailableJobs(adult);
-assert.ok(jobs.length >= 1 && jobs.length <= 3);
+assert.ok(jobs.filter(job=>job.eligible).length >= 3);
 assert.ok(jobs.some((job) => job.eligible));
 
 const office = jobs.find((job) => job.id === "office-trainee");

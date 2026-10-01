@@ -15,16 +15,24 @@ export const CAREER_ROLES = Object.freeze([
   { name: "Executive Director", salary: 850, performance: 100, knowledge: 100, reputation: 100, readiness: 100 },
 ]);
 
-export function startCareer(state, careerId = "office") {
+const CAREER_TRACKS = {
+  retail: CAREER_ROLES.map((role,index)=>({...role,name:["Shop Assistant","Senior Assistant","Shop Supervisor","Store Manager","Regional Manager"][index],salary:[125,165,225,320,480][index]})),
+  logistics: CAREER_ROLES.map((role,index)=>({...role,name:["Logistics Clerk","Stock Coordinator","Shift Supervisor","Operations Manager","Logistics Director"][index],salary:[200,285,400,580,850][index]})),
+};
+const careerRoles = career => CAREER_TRACKS[career.pathId] || CAREER_ROLES;
+
+export function startCareer(state, careerId = "office", { roleIndex = 0 } = {}) {
+  const roles=CAREER_TRACKS[careerId]||CAREER_ROLES;
+  const index=Math.max(0,Math.min(roles.length-1,roleIndex));
   const next = clone(state);
   next.business.active = false;
   next.career = {
     ...next.career,
     active: true,
     pathId: careerId,
-    roleIndex: 0,
-    role: CAREER_ROLES[0].name,
-    salary: CAREER_ROLES[0].salary,
+    roleIndex: index,
+    role: roles[index].name,
+    salary: roles[index].salary,
     performance: 50,
     boss: 50,
     coworkers: 50,
@@ -132,8 +140,9 @@ export function resolveCareerChoice(state, eventId, choiceId, { random = Math.ra
 }
 
 function isPromotionReady(state) {
-  const role = CAREER_ROLES[state.career.roleIndex];
-  return state.career.roleIndex < CAREER_ROLES.length - 1
+  const roles=careerRoles(state.career);
+  const role = roles[state.career.roleIndex];
+  return state.career.roleIndex < roles.length - 1
     && state.career.performance >= role.performance
     && state.stats.knowledge >= role.knowledge
     && state.stats.reputation >= role.reputation
@@ -175,7 +184,7 @@ export function settleCareerDay(state, { day = state.calendar.day, attendance = 
 
   if (isPromotionReady(next)) {
     next.career.roleIndex += 1;
-    const promoted = CAREER_ROLES[next.career.roleIndex];
+    const promoted = careerRoles(next.career)[next.career.roleIndex];
     next.career.role = promoted.name;
     next.career.salary = promoted.salary;
     next.career.readiness = clamp(next.career.readiness - 40);

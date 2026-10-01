@@ -139,6 +139,7 @@ export function createDefaultState() {
       complete: false,
     },
     settings: {
+      lastQuizIds: [],
       reducedMotion: false,
       sound: false,
       openPanels: [],
@@ -158,7 +159,7 @@ export function validateName(input) {
   return { ok: true, value, error: "" };
 }
 
-export function createNewLife({ name, gender }) {
+export function createNewLife({ name, gender, previousQuizIds = [] }) {
   const checkedName = validateName(name);
   if (!checkedName.ok) throw new TypeError(checkedName.error);
   if (!Object.hasOwn(GENDERS, gender)) throw new TypeError("Choose a gender.");
@@ -171,8 +172,9 @@ export function createNewLife({ name, gender }) {
   state.life = {
     ...state.life,
     stage: "school-finale",
-    school: { step: "entrance-test", choiceIds: [], quiz: createEntranceQuiz() },
+    school: { step: "entrance-test", choiceIds: [], quiz: createEntranceQuiz(Math.random,previousQuizIds) },
   };
+  state.settings.lastQuizIds = state.life.school.quiz.order;
   return ensureStarterPeople(state, { seed: `${checkedName.value}:${gender}` });
 }
 
@@ -295,6 +297,7 @@ export function validateState(candidate) {
   state.life.stage = LIFE_STAGES.includes(source.life?.stage) ? source.life.stage : "adult";
   state.life.school.step = String(source.life?.school?.step || (state.life.stage === "school-finale" ? "last-morning" : "complete"));
   state.life.school.choiceIds = uniqueStrings(source.life?.school?.choiceIds);
+  if (state.life.school.step === "entrance-test" && state.life.school.quiz && !Number.isFinite(state.life.school.quiz.deadline)) state.life.school.quiz.deadline = Date.now() + 30000;
   state.life.examResult = source.life?.examResult && typeof source.life.examResult === "object"
     ? clone(source.life.examResult)
     : null;

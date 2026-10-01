@@ -18,7 +18,7 @@ test('an eight-question test saves progress and scores real answers',()=>{
 test('failing the entrance test still offers practical opportunities',()=>{
  let state=createNewLife({name:'Thabo',gender:'man'});
  for(let i=0;i<8;i++){const question=exam.ENTRANCE_QUESTIONS.find(q=>q.id===state.life.school.quiz.order[i]);state=chooseSchoolDecision(state,question.choices.find(c=>c.id!==question.correct).id);}
- assert.equal(state.life.examResult.score,0);assert.equal(state.stats.knowledge,20);assert.equal(getAvailableJobs(state).find(j=>j.id==='office-trainee').eligible,false);assert.ok(getAvailableJobs(state).some(j=>j.type==='business'&&j.eligible));
+ assert.equal(state.life.examResult.score,0);assert.equal(state.stats.knowledge,20);assert.equal(getAvailableJobs(state).some(j=>j.id==='office-trainee'),false);assert.ok(getAvailableJobs(state).some(j=>j.type==='business'&&j.eligible));
 });
 test('a headline decision finishes work rather than adding a second work choice',()=>{
  let state=choosePath(createDefaultState(),'office',{random:()=>0});state.dailyState.phase='headline';state.dailyState.activeEventId='friend-hard-day';

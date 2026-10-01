@@ -7,6 +7,7 @@ import {
   drawEvent,
   getChoiceStage,
   resolveDueEvents,
+  describeConsequence,
   scheduleDelayedEvent,
   scheduleChoiceConsequence,
 } from "./event-deck.js";
@@ -250,9 +251,9 @@ export function startDay(state, { random = Math.random } = {}) {
   next = applyEffects(next, { stats: { energy: 12 } }, { source: "morning-recovery" }).state;
   const due = resolveDueEvents(next, next.calendar.day);
   next = due.state;
-  next.dailyState.updates = [due.primary, ...due.updates].filter(Boolean).map((item) => item.payload?.result || item.outcomeId);
+  next.dailyState.updates = [due.primary, ...due.updates].filter(Boolean).map(describeConsequence);
   if (due.primary) {
-    next.dailyState.result = due.primary.payload?.result || due.primary.outcomeId;
+    next.dailyState.result = describeConsequence(due.primary);
   }
   for (const dueItem of [due.primary, ...due.updates].filter(Boolean)) {
     if (dueItem.eventId !== "job-application") continue;
@@ -430,8 +431,8 @@ export function settleRoutineDay(state, { random = Math.random, driverMode = fal
   next = applyEffects(next, { stats: { energy: 12 } }, { source: "routine-recovery" }).state;
   const due = resolveDueEvents(next, next.calendar.day);
   next = due.state;
-  next.dailyState.updates = [due.primary, ...due.updates].filter(Boolean).map((item) => item.payload?.result || item.outcomeId);
-  if (due.primary) next.dailyState.result = due.primary.payload?.result || due.primary.outcomeId;
+  next.dailyState.updates = [due.primary, ...due.updates].filter(Boolean).map(describeConsequence);
+  if (due.primary) next.dailyState.result = describeConsequence(due.primary);
 
   const transactions = [];
   if (driverMode && next.transport.owned.includes("car")) {

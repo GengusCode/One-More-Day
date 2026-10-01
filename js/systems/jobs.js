@@ -28,12 +28,10 @@ export function getAvailableJobs(state) {
   if (hasActivePath(state)) return [];
   const restart = state.career?.dismissed || state.business?.closed;
   const regular = JOB_OPPORTUNITIES.filter((job) => !job.restartOnly);
-  const selectedStartup = regular
-    .filter((job) => job.type === "business")
-    [state.stats.knowledge >= 45 ? 1 : 0];
-  const candidates = [regular.find((job) => job.type === "career"), selectedStartup];
-  if (restart) candidates.push(JOB_OPPORTUNITIES.find((job) => job.restartOnly));
-  return candidates.filter(Boolean).slice(0, 3).map((job) => ({ ...job, ...eligibility(state, job) }));
+  const score=Number(state.life?.examResult?.score)||0;
+  const candidates=regular.filter(job=>!job.minExam||score>=job.minExam);
+  if(restart)candidates.push(JOB_OPPORTUNITIES.find(job=>job.restartOnly));
+  return candidates.filter(Boolean).map(job=>({...job,...eligibility(state,job)}));
 }
 
 export function applyForJob(state, jobId) {
@@ -74,13 +72,16 @@ export function resolveJobApplication(state, applicationId) {
   const job = JOB_OPPORTUNITIES.find((item) => item.id === application.jobId);
   if (!job) return { state, resolved: false, accepted: false };
   const strength = (Number(state.life?.examResult?.score) || 0) + state.stats.knowledge + state.stats.reputation;
-  const accepted = strength >= 105;
+  const accepted = !job.minExam || strength >= 105;
   let next = clone(state);
   next.jobs.applications = next.jobs.applications.map((item) => (
     item.id === applicationId ? { ...item, status: accepted ? "accepted" : "declined" } : item
   ));
   next.jobs.activeApplicationId = null;
-  if (accepted) next = startCareer(next, job.pathId);
+  if (accepted) {
+    next = startCareer(next, job.pathId, { roleIndex: job.startRoleIndex || 0 });
+    next.career.role = job.title;
+  }
   next.jobs.lastResult = {
     applicationId,
     accepted,

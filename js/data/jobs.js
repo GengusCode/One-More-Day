@@ -6,6 +6,7 @@ export const JOB_OPPORTUNITIES = Object.freeze([
     type: "career",
     pathId: "office",
     minExam: 50,
+    startingSalary: 180,
     minKnowledge: 30,
     detail: "Start small, learn the office, earn your way upward.",
   }),
@@ -20,6 +21,7 @@ export const JOB_OPPORTUNITIES = Object.freeze([
   }),
   Object.freeze({
     id: "resell-startup",
+    minExam: 40,
     title: "Buy & resell hustle",
     icon: "📦",
     type: "business",
@@ -27,6 +29,10 @@ export const JOB_OPPORTUNITIES = Object.freeze([
     minCash: 300,
     detail: "Source carefully, sell smart and grow your stock.",
   }),
+  Object.freeze({ id: "shop-assistant", title: "Shop assistant", icon: "🛒", type: "career", pathId: "retail", startingSalary: 125, detail: "An entry-level role. Start with lower pay and build skills for promotion." }),
+  Object.freeze({ id: "moving-startup", title: "Local moving service", icon: "🛻", type: "business", pathId: "moving-service", minCash: 200, detail: "Start with small moving and carrying jobs. Physical work and careful budgeting matter." }),
+  Object.freeze({ id: "logistics-clerk", title: "Logistics clerk", icon: "📋", type: "career", pathId: "logistics", minExam: 65, minKnowledge: 50, startingSalary: 200, detail: "Use planning and numeracy to manage stock and deliveries." }),
+  Object.freeze({ id: "junior-analyst", title: "Junior analyst", icon: "📊", type: "career", pathId: "office", minExam: 85, minKnowledge: 70, startRoleIndex: 1, startingSalary: 260, detail: "A strong test result opens a better-paid starting role. Performance still matters." }),
   Object.freeze({
     id: "fresh-start",
     title: "Fresh-start moving service",

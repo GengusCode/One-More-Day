@@ -11,7 +11,7 @@ import { createRenderer } from "./ui/render.js";
 import { createMoneyFeedback } from "./ui/money-feedback.js";
 import { buyUpgrade, hireEmployee } from "./systems/business.js";
 import { buyTransportAsset, assignCarForDay } from "./systems/travel.js";
-import { chooseSchoolDecision } from "./systems/life.js";
+import { chooseSchoolDecision, expireEntranceQuestion } from "./systems/life.js";
 import { applyForJob } from "./systems/jobs.js";
 import { fastForward } from "./systems/timeline.js";
 import {
@@ -33,6 +33,8 @@ const loaded = loadGame(localStorage);
 const pageVersion = document.documentElement.dataset.gameVersion;
 const versionCompatible = isCompatiblePageVersion(pageVersion, loaded.state.schemaVersion);
 let state = loaded.state;
+let previousQuizIds = state.life.school.quiz?.order || state.settings.lastQuizIds || [];
+let examTimer = 0;
 let screen = "setup";
 let committing = false;
 let slotsSpinning = false;
@@ -46,6 +48,7 @@ const seenTransactions = new Set(state.finances.transactions.map((item) => item.
 const renderer = createRenderer({ root, dispatch });
 
 function render(extra = {}) {
+  clearInterval(examTimer);
   moneyFeedback?.destroy();
   moneyFeedback = null;
   renderer.render(state, {
@@ -57,7 +60,7 @@ function render(extra = {}) {
     event: getCurrentDecision(state),
     canAdvance: canAdvanceDay(state),
     nextLabel: canAdvanceDay(state)
-      ? "NEXT MONTH →"
+      ? "NEXT DAY →"
       : state.dailyState.phase === "path"
         ? "CHOOSE A PATH FIRST"
         : state.dailyState.phase === "minigame"
@@ -81,6 +84,14 @@ function render(extra = {}) {
       });
     }
     maybeLaunchChase();
+    if (state.life.stage === "school-finale" && state.life.school.step === "entrance-test") {
+      examTimer = setInterval(() => {
+        const left = Math.max(0, Math.ceil((state.life.school.quiz.deadline - Date.now()) / 1000));
+        const clock = root.querySelector("[data-exam-clock]");
+        if (clock) { clock.textContent = left + "s"; clock.classList.toggle("is-urgent", left <= 10); }
+        if (left === 0) { clearInterval(examTimer); dispatch("EXAM_TIMEOUT"); }
+      }, 250);
+    }
   }
 }
 
@@ -137,7 +148,8 @@ async function dispatch(action, payload = {}) {
   }
   if (action === "START_LIFE") {
     try {
-      const next = createNewLife(payload);
+      const next = createNewLife({ ...payload, previousQuizIds });
+      previousQuizIds = next.life.school.quiz.order;
       await commit(startDay(next));
       if (!error) {
         seenTransactions.clear();
@@ -158,7 +170,9 @@ async function dispatch(action, payload = {}) {
   if (action === "RESET_LIFE") {
     if (!state.life.ended && !window.confirm("Start a new life? Your v0.9 progress on this device will be cleared.")) return;
     try {
-      state = saveGame(createDefaultState(), localStorage);
+      const fresh = createDefaultState();
+      fresh.settings.lastQuizIds = previousQuizIds;
+      state = saveGame(fresh, localStorage);
       seenTransactions.clear();
       screen = "setup";
       error = "";
@@ -177,6 +191,11 @@ async function dispatch(action, payload = {}) {
     if (action === "OPEN_PHONE_APP") next.settings.phone = { open: true, app: payload.app || payload.id || "home" };
     await commit(next);
     render();
+    return;
+  }
+  if (action === "EXAM_TIMEOUT") {
+    await commit(expireEntranceQuestion(state));
+    render({ focusTarget: "#today-title" });
     return;
   }
   if (action === "CHOOSE_SCHOOL") {
@@ -286,7 +305,7 @@ async function dispatch(action, payload = {}) {
     return;
   }
   if (action === "NEXT_DAY" && canAdvanceDay(state)) {
-    await commit(fastForward(state,30).state);
+    await commit(advanceDay(state));
     render({ focusTarget: "#today-title" });
   }
 }

@@ -28,7 +28,9 @@ export function getSchoolDecision(state) {
     const quiz = state.life.school.quiz;
     const question = ENTRANCE_QUESTIONS.find(item=>item.id===quiz?.order[quiz.index]);
     if (!question) return null;
-    return { icon: "📝", kicker: `STARTING TEST · ${quiz.index+1}/8`, title: question.text, text: "Choose one answer. Pass mark: 50%. Your result sets your character’s starting knowledge and job opportunities.", choices: question.choices.map(choice=>({...choice,action:"CHOOSE_SCHOOL"})) };
+    const order = quiz.choiceOrders?.[question.id] || question.choices.map(choice=>choice.id);
+    const category = ['logic','reading','priority','instructions','date','delivery'].some(prefix=>question.id.startsWith(prefix)) ? 'Reading & reasoning' : 'Numbers & everyday problems';
+    return { icon: "📝", kicker: `STARTING TEST · ${quiz.index+1}/8 · ${category}`, title: question.text, text: "Choose one answer before the timer ends. Pass mark: 50%. Your score determines starting knowledge and available jobs.", timerSeconds: Math.max(0,Math.ceil((quiz.deadline-Date.now())/1000)), choices: order.map(id=>question.choices.find(choice=>choice.id===id)).filter(Boolean).map((choice,index)=>({...choice,label:`${String.fromCharCode(65+index)}. ${choice.label}`,action:"CHOOSE_SCHOOL"})) };
   }
   const decision = SCHOOL_DECISIONS[state.life.school?.step];
   if (!decision) return null;
@@ -56,24 +58,35 @@ export function completeSchool(state) {
   return next;
 }
 
-export function chooseSchoolDecision(state, choiceId) {
-  const step = state.life?.school?.step;
-  if (step === "entrance-test") {
-    const quiz = state.life.school.quiz;
-    const question = ENTRANCE_QUESTIONS.find(item=>item.id===quiz?.order[quiz.index]);
-    if (!question?.choices.some(choice=>choice.id===choiceId)) return state;
-    const next = clone(state);
-    next.life.school.quiz.answers.push({ questionId: question.id, answer: choiceId, correct: choiceId===question.correct });
-    next.life.school.quiz.index++;
-    if (next.life.school.quiz.index < 8) return next;
-    const correct = next.life.school.quiz.answers.filter(answer=>answer.correct).length;
-    const score = Math.round(correct / 8 * 100);
-    next.life.examResult = { score, correct, total: 8, band: score>=75?'strong':score>=50?'pass':'developing', label: score>=75?'Strong pass':score>=50?'Pass':'Needs practice', approach:'entrance-test' };
-    next.stats.knowledge = Math.round(20 + score * .65);
-    next.stats.happiness = Math.min(100, next.stats.happiness + (score>=50?5:0));
-    const completed = completeSchool(next);
-    completed.dailyState.result = `Test result: ${score}% (${correct}/8). ${next.life.examResult.label}. Starting knowledge: ${next.stats.knowledge}/100. R650 in gifts helps you start. Open Jobs to see your opportunities.`;
-    return completed;
+function recordEntranceAnswer(state, answer, now) {
+  const quiz=state.life.school.quiz;
+  const question=ENTRANCE_QUESTIONS.find(item=>item.id===quiz?.order[quiz.index]);
+  if(!question)return state;
+  const next=clone(state);
+  next.life.school.quiz.answers.push({questionId:question.id,answer,correct:answer===question.correct});
+  next.life.school.quiz.index++;
+  next.life.school.quiz.deadline=now+30000;
+  if(next.life.school.quiz.index<8)return next;
+  const correct=next.life.school.quiz.answers.filter(item=>item.correct).length;
+  const score=Math.round(correct/8*100);
+  next.life.examResult={score,correct,total:8,band:score>=75?'strong':score>=50?'pass':'developing',label:score>=75?'Strong pass':score>=50?'Pass':'Needs practice',approach:'entrance-test'};
+  next.stats.knowledge=Math.round(20+score*.65);
+  next.stats.happiness=Math.min(100,next.stats.happiness+(score>=50?5:0));
+  const completed=completeSchool(next);
+  completed.dailyState.result=`Test result: ${score}% (${correct}/8). ${next.life.examResult.label}. Starting knowledge: ${next.stats.knowledge}/100. R650 in gifts helps you start. Open Jobs to compare your starting paths.`;
+  return completed;
+}
+export function expireEntranceQuestion(state,{now=Date.now()}={}) {
+  if(state.life.stage!=='school-finale'||state.life.school.step!=='entrance-test'||now<state.life.school.quiz.deadline)return state;
+  return recordEntranceAnswer(state,null,now);
+}
+export function chooseSchoolDecision(state, choiceId, {now=Date.now()}={}) {
+  const step=state.life?.school?.step;
+  if(step==='entrance-test') {
+    if(now>=state.life.school.quiz.deadline)return expireEntranceQuestion(state,{now});
+    const question=ENTRANCE_QUESTIONS.find(item=>item.id===state.life.school.quiz?.order[state.life.school.quiz.index]);
+    if(!question?.choices.some(choice=>choice.id===choiceId))return state;
+    return recordEntranceAnswer(state,choiceId,now);
   }
 
   const decision = SCHOOL_DECISIONS[step];

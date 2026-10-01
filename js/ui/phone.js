@@ -34,7 +34,7 @@ function jobsApp(state) {
     id: job.id,
     title: job.title,
     icon: job.icon,
-    text: job.detail,
+    text: job.detail + (job.startingSalary ? ` Starting pay: ${formatRand(job.startingSalary)} per working day.` : ""),
     badge: job.eligible ? "Open" : "Locked",
     actions: [action(job.id, "APPLY_JOB", "Apply", job.reason, !job.eligible)],
   }));

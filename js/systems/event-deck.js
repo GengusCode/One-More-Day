@@ -1,5 +1,5 @@
 import { applyEffects } from "../core/state.js";
-import { EVENTS, isEventEligible } from "../data/events.js";
+import { EVENTS, WORK_DECISIONS, isEventEligible } from "../data/events.js";
 
 const clone = (value) => (
   typeof structuredClone === "function" ? structuredClone(value) : JSON.parse(JSON.stringify(value))
@@ -79,8 +79,17 @@ export function scheduleChoiceConsequence(state, eventId, choice, random = Math.
     eventId,
     outcomeId: delay.outcomeId + "-" + choice.id + "-" + state.calendar.day,
     severity: delay.severity || 1,
-    payload: { ...clone(delay), ...clone(outcome) },
+    payload: { ...clone(delay), ...clone(outcome), cause: choice.label },
   });
+}
+
+export function describeConsequence(item) {
+  if(!item)return "";
+  const candidates=[...EVENTS,...WORK_DECISIONS].find(event=>event.id===item.eventId)?.choices || [];
+  const choices=candidates.flatMap(choice=>[choice,...(choice.followUp?.choices||[])]);
+  const cause=item.payload?.cause || choices.find(choice=>choice.delayed && item.outcomeId.startsWith(choice.delayed.outcomeId))?.label;
+  const result=item.payload?.result || item.outcomeId;
+  return cause ? `Because you chose “${cause}” earlier: ${result}` : result;
 }
 
 export function resolveDueEvents(state, day) {

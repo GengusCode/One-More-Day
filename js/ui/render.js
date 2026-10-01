@@ -174,6 +174,7 @@ function eventMarkup(event) {
       <div class="event-card__top"><span class="event-card__icon" aria-hidden="true">${escapeText(safeEvent.icon || "◆")}</span><p>${escapeText(safeEvent.kicker || "TODAY")}</p></div>
       <h2 id="today-title">${escapeText(safeEvent.title)}</h2>
       <p class="event-card__text">${escapeText(safeEvent.text)}</p>
+      ${safeEvent.timerSeconds !== undefined ? `<div class="exam-timer" role="timer" aria-label="Time left for this question"><span>TIME LEFT</span><strong data-exam-clock>${safeEvent.timerSeconds}s</strong></div>` : ""}
       ${safeEvent.result ? `<div class="result" aria-live="polite">${escapeText(safeEvent.result)}</div>` : ""}
       <div class="decision-grid">${choices}</div>
     </article>`;
@@ -213,9 +214,8 @@ function gameMarkup(state, context) {
       <section class="personal-stats" aria-label="Personal stats">
         ${["health", "happiness", "knowledge", "social", "reputation"].map((key) => `<div class="stat-tile stat-tile--${key}"><span>${key.toUpperCase()}</span><strong>${view.hud[key]}<small>/100</small></strong><div class="stat-meter" aria-hidden="true"><i style="width:${Math.max(0, Math.min(100, Number(state.stats[key]) || 0))}%"></i></div></div>`).join("")}
       </section>
-      <main class="play-column">${(state.dailyState.updates || []).length ? `<section class="life-callbacks" aria-label="Earlier choices coming back"><strong>YOUR EARLIER CHOICES</strong>${state.dailyState.updates.slice(0,3).map(text=>`<p>${escapeText(text)}</p>`).join("")}</section>` : ""}${state.life.ended ? endingMarkup(state.life.endingSummary) : eventMarkup(context.event)}
+      <main class="play-column">${(state.dailyState.updates || []).length ? `<section class="life-news" aria-label="Today’s news">${state.dailyState.updates.slice(0,3).map(text=>`<p>${escapeText(text)}</p>`).join("")}</section>` : ""}${state.life.ended ? endingMarkup(state.life.endingSummary) : eventMarkup(context.event)}
         ${state.life.ended ? "" : `<button class="button button--primary button--wide next-day" type="button" data-action="NEXT_DAY" ${context.canAdvance ? "" : "disabled"}>${escapeText(context.nextLabel || "FINISH TODAY FIRST")}</button>
-        <button class="button button--wide age-year" type="button" data-action="FAST_FORWARD" data-choice="year" ${context.canAdvance ? "" : "disabled"}>AGE ONE YEAR →</button>
         <button class="phone-launch" type="button" data-action="OPEN_PHONE" aria-haspopup="dialog"><span aria-hidden="true">📱</span><strong>PHONE</strong><small>${phoneModel.notifications.length ? escapeText(phoneModel.notifications[0].text) : "Apps, people & plans"}</small></button>`}
       </main>
       ${state.life.ended ? "" : renderPhone({ ...phoneModel, greeting: `Sharp, ${view.playerName}` }, { open: phoneOpen, activeApp: phoneApp })}
