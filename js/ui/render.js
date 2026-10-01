@@ -32,6 +32,11 @@ export function buildGameViewModel(state) {
       age: state.calendar.age,
       cash: formatRand(state.finances.cash),
       energy: state.stats.energy,
+      health: state.stats.health,
+      happiness: state.stats.happiness,
+      knowledge: state.stats.knowledge,
+      social: state.stats.social,
+      reputation: state.stats.reputation,
     },
   };
 }
@@ -159,8 +164,8 @@ function eventMarkup(event) {
     icon: "☀", kicker: "DAY ONE", title: "Your first move is waiting",
     text: "Choose a path and your ordinary days will begin settling automatically.", choices: [],
   };
-  const choices = (safeEvent.choices || []).map((choice, index) => `
-    <button class="decision ${index === 0 ? "decision--feature" : ""}" type="button"
+  const choices = (safeEvent.choices || []).map((choice) => `
+    <button class="decision" type="button"
       data-action="${escapeText(choice.action || "CHOOSE_EVENT")}" data-choice="${escapeText(choice.id)}" ${choice.disabled ? "disabled" : ""}>
       <span>${escapeText(choice.label)}</span>${choice.detail ? `<small>${escapeText(choice.detail)}</small>` : ""}
     </button>`).join("");
@@ -204,6 +209,9 @@ function gameMarkup(state, context) {
         <div><span>DAY</span><strong>${view.hud.day}</strong></div><div><span>AGE</span><strong>${view.hud.age}</strong></div>
         <div class="hud__money"><span>CASH</span><strong id="cashBalance">${view.hud.cash}</strong><div id="moneyFeedback" class="money-feedback" aria-live="polite"></div></div>
         <div><span>ENERGY</span><strong>${view.hud.energy}</strong></div>
+      </section>
+      <section class="personal-stats" aria-label="Personal stats">
+        ${["health", "happiness", "knowledge", "social", "reputation"].map((key) => `<div><span>${key.toUpperCase()}</span><strong>${view.hud[key]}<small>/100</small></strong></div>`).join("")}
       </section>
       <main class="play-column">${state.life.ended ? endingMarkup(state.life.endingSummary) : eventMarkup(context.event)}
         ${state.life.ended ? "" : `<button class="button button--primary button--wide next-day" type="button" data-action="NEXT_DAY" ${context.canAdvance ? "" : "disabled"}>${escapeText(context.nextLabel || "FINISH TODAY FIRST")}</button>

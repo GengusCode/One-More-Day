@@ -31,6 +31,7 @@ import {
   resolveWork,
   advanceDay,
   canAdvanceDay,
+  resolveMinigame,
   getCurrentDecision,
 } from "../js/systems/day.js";
 
@@ -294,25 +295,17 @@ test("fourteen simulated days keep headlines varied and automatic work playable"
   let state = choosePath(startDay(newLife(), { random }), "office", { random });
   const headlines = [];
   for (let count = 0; count < 14; count += 1) {
-    const decision = getCurrentDecision(state);
-    if (state.dailyState.phase === "travel") {
-      state = chooseEvent(state, state.dailyState.activeEventId, decision.choices.find((item) => !item.disabled).id);
-    } else if (state.dailyState.phase === "headline" || state.dailyState.phase === "follow-up") {
-      headlines.push(state.dailyState.activeEventId);
-      const selected = decision.choices.find((item) => !item.disabled);
-      state = chooseEvent(state, state.dailyState.activeEventId, selected.id);
-    }
-    if (state.dailyState.phase === "follow-up") {
-      const followUp = getCurrentDecision(state);
-      state = chooseEvent(state, state.dailyState.activeEventId, followUp.choices[0].id);
-    }
-    if (state.dailyState.phase === "work") {
-      const work = getCurrentDecision(state);
-      state = resolveWork(state, work?.choices?.[0]?.id || "");
-    }
-    if (state.dailyState.phase === "minigame") {
-      state.dailyState.phase = "work";
-      state = resolveWork(state, "");
+    for (let step = 0; step < 8 && state.dailyState.phase !== "complete"; step += 1) {
+      const decision = getCurrentDecision(state);
+      if (state.dailyState.phase === "travel" || state.dailyState.phase === "headline" || state.dailyState.phase === "follow-up") {
+        if (state.dailyState.phase === "headline") headlines.push(state.dailyState.activeEventId);
+        const selected = decision.choices.find((item) => !item.disabled);
+        state = chooseEvent(state, state.dailyState.activeEventId, selected.id);
+      } else if (state.dailyState.phase === "work") {
+        state = resolveWork(state, decision?.choices?.[0]?.id || "");
+      } else if (state.dailyState.phase === "minigame") {
+        state = resolveMinigame(state, { outcome: "caught" });
+      } else break;
     }
     assert.equal(state.dailyState.phase, "complete", "day " + state.calendar.day);
     if (count < 13) state = advanceDay(state, { random });

@@ -17,13 +17,19 @@ const renderer = createRenderer({ root, dispatch() {} });
 const life = createNewLife({ name: "Naledi", gender: "woman" });
 renderer.render(life, {
   screen: "game",
-  event: null,
+  event: { title: "Your move", choices: [{ id: "one", label: "Rest" }, { id: "two", label: "Learn" }] },
   canAdvance: false,
 });
 
 assert.equal((root.html.match(/data-action="OPEN_PHONE"/g) || []).length, 1);
 assert.doesNotMatch(root.html, /secondary-stack/);
 assert.match(root.html, /class="phone-launch"/);
+const beforeDecision = root.html.split('<main class="play-column">')[0];
+for (const label of ["HEALTH", "HAPPINESS", "KNOWLEDGE", "SOCIAL", "REPUTATION"]) {
+  assert.ok(beforeDecision.includes(label), `${label} is visible above the decision`);
+}
+assert.ok(!beforeDecision.includes("guardian"), "relationship scores stay on the phone");
+assert.doesNotMatch(root.html, /decision--feature/);
 
 const phone = buildPhoneModel(life);
 assert.deepEqual(phone.apps.map((app) => app.id), ["jobs", "transport", "business", "people", "life", "time"]);

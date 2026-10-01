@@ -25,21 +25,21 @@ export function drawEvent({
 }) {
   const eligible = [...new Set(eligibleIds)];
   if (!eligible.length) return { eventId: null, deckState: { order: [], seen: [] } };
-  const recent = new Set(recentIds.slice(-3));
+  const recent = new Set(recentIds.filter((id) => eligible.includes(id))
+    .slice(-Math.min(10, Math.max(1, eligible.length - 1))));
   let state = deckState && Array.isArray(deckState.order)
     ? { order: deckState.order.slice(), seen: Array.isArray(deckState.seen) ? deckState.seen.slice() : [] }
     : createDeckState(eligible, random);
-  const usable = (ids) => {
-    const available = ids.filter((id) => eligible.includes(id));
-    const protectedIds = available.filter((id) => !recent.has(id));
-    return protectedIds.length ? protectedIds : available;
-  };
+  const known = new Set([...state.order, ...state.seen]);
+  state.order.push(...shuffle(eligible.filter((id) => !known.has(id)), random));
+  const usable = (ids) => ids.filter((id) => eligible.includes(id) && !recent.has(id));
   let candidates = usable(state.order);
-  const threshold = Math.ceil(eligible.length * 0.75);
-  if (!candidates.length || (state.seen.length >= threshold && state.order.length === 0)) {
+  if (!candidates.length) {
     state = createDeckState(eligible, random);
     candidates = usable(state.order);
   }
+  // If the pool is too small, choose the least recently seen card, never deadlock.
+  if (!candidates.length) candidates = state.order.slice().sort((a, b) => recentIds.lastIndexOf(a) - recentIds.lastIndexOf(b));
   if (!candidates.length) return { eventId: null, deckState: state };
   const eventId = candidates[0];
   state.order = state.order.filter((id) => id !== eventId);

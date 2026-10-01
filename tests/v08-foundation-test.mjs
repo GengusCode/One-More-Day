@@ -29,7 +29,7 @@ test("user supplied text is escaped before markup insertion", () => {
   );
 });
 
-test("game view model exposes only the compact primary HUD", () => {
+test("game view model exposes personal stats without relationship scores", () => {
   const state = createNewLife({ name: "Thando", gender: "man" });
   state.calendar.day = 8;
   state.finances.cash = 1_234;
@@ -39,9 +39,14 @@ test("game view model exposes only the compact primary HUD", () => {
     age: 18,
     cash: "R1\u00a0234",
     energy: 72,
+    health: state.stats.health,
+    knowledge: state.stats.knowledge,
+    social: state.stats.social,
+    happiness: state.stats.happiness,
+    reputation: state.stats.reputation,
   });
   assert.equal(view.playerName, "Thando");
-  assert.equal("health" in view.hud, false);
+  assert.equal("relationships" in view.hud, false);
   assert.equal("netWorth" in view.hud, false);
 });
 

@@ -1,6 +1,118 @@
 const choice = (id, label, result, effects = {}, extra = {}) => ({ id, label, result, effects, ...extra });
 
+const EVERYDAY_EVENTS = [
+  {
+    id: "first-payday-plan", deck: "money", icon: "💳", kicker: "STARTING OUT",
+    title: "Your friends are planning a payday shopping trip.",
+    text: "You are still finding your feet. They want company, and the shops want your whole balance.",
+    eligibility: { maxAge: 29 },
+    choices: [
+      choice("browse-only", "Go along and stick to browsing", "You enjoy the company without buying a new problem.", { stats: { social: 4, knowledge: 2 } }),
+      choice("buy-treat", "Set R90 aside for a treat", "One small purchase feels better than spending everything.", { cash: -90, stats: { happiness: 5 } }),
+      choice("plan-at-home", "Stay home and plan your money", "A clear plan makes the next payday less mysterious.", { stats: { knowledge: 6, energy: 3, social: -2 } }),
+    ],
+  },
+  {
+    id: "old-classmate-course", deck: "opportunity", icon: "📚", kicker: "AFTER SCHOOL",
+    title: "A classmate shares a free evening course.",
+    text: "It starts tonight. You could learn something useful, but you are tired from the day.",
+    eligibility: { maxAge: 29 },
+    choices: [
+      choice("attend-course", "Take the first class", "You leave tired, with notes you can actually use.", { stats: { knowledge: 7, energy: -8 }, relationships: { classmate: 4 } }),
+      choice("study-together", "Ask to study together later", "A familiar face makes learning feel possible.", { stats: { knowledge: 3, social: 3 }, relationships: { classmate: 5 } }),
+      choice("rest-tonight", "Rest tonight", "There is no certificate for exhaustion. You catch up on sleep.", { stats: { energy: 10, happiness: 2 } }),
+    ],
+  },
+  {
+    id: "weekend-market-shift", deck: "opportunity", icon: "🥬", kicker: "PAID SIDE JOB",
+    title: "A market trader needs help for the morning.",
+    text: "There are crates to unpack and customers to serve. The pay is agreed before you start.",
+    eligibility: { weekend: true, maxAge: 59 },
+    choices: [
+      choice("full-market-shift", "Work the morning for R120", "You unpack, serve and clean up. The trader pays the agreed R120.", { cash: 120, stats: { energy: -14, reputation: 3 } }),
+      choice("short-market-shift", "Do two hours for R60", "You earn R60 for unloading and keep the afternoon free.", { cash: 60, stats: { energy: -7 } }),
+      choice("decline-market", "Keep your day off", "Your wallet stays where it was. Your body gets a break.", { stats: { energy: 9, happiness: 3 } }),
+    ],
+  },
+  {
+    id: "weekend-poster-job", deck: "opportunity", icon: "🎨", kicker: "SMALL COMMISSION",
+    title: "A local takeaway needs a new menu poster.",
+    text: "The owner offers R100 for a finished design, or R40 to help check the wording.",
+    eligibility: { weekend: true },
+    choices: [
+      choice("design-poster", "Make the poster for R100", "You deliver the artwork, make one revision and collect R100.", { cash: 100, stats: { energy: -10, knowledge: 3 } }),
+      choice("check-menu", "Proofread the menu for R40", "You catch two wrong prices and earn the agreed R40.", { cash: 40, stats: { energy: -4, reputation: 2 } }),
+      choice("refer-designer", "Recommend someone else", "The owner gets a contact. You keep your weekend.", { stats: { social: 3 }, relationships: { neighbour: 3 } }),
+    ],
+  },
+  {
+    id: "water-off", deck: "community", icon: "🚰", kicker: "EMPTY TAPS",
+    title: "The water is off and nobody knows for how long.",
+    text: "A neighbour has spare containers. The shop still has bottled water, at a price.",
+    choices: [
+      choice("share-water", "Collect water with the neighbours", "You carry your share and help with theirs.", { stats: { energy: -7, social: 4 }, relationships: { neighbour: 5 } }),
+      choice("buy-water", "Buy R35 of drinking water", "You cover the basics and save your energy.", { cash: -35, stats: { happiness: 2 } }),
+      choice("use-reserves", "Use your reserve carefully", "You make it last and learn what to store next time.", { stats: { knowledge: 4, happiness: -2 } }),
+    ],
+  },
+  {
+    id: "friend-hard-day", deck: "relationships", icon: "☕", kicker: "A QUIET MESSAGE",
+    title: "Your friend asks if you have a minute.",
+    text: "The voice note is unusually short. Something has gone wrong, and they need someone to listen.",
+    choices: [
+      choice("listen-friend", "Make time for a proper call", "You cannot solve it all, but they no longer feel alone.", { stats: { energy: -4, social: 4 }, relationships: { friend: 8 } }),
+      choice("coffee-friend", "Meet for a R30 coffee", "A quiet table makes a difficult conversation easier.", { cash: -30, stats: { happiness: 4 }, relationships: { friend: 6 } }),
+      choice("message-later", "Explain you need to rest first", "You set a boundary and send a thoughtful reply later.", { stats: { energy: 6 }, relationships: { friend: 1 } }),
+    ],
+  },
+  {
+    id: "resell-listing", deck: "owner", icon: "📸", kicker: "SELL WHAT YOU HAVE",
+    title: "An item has sat on your shelf all week.",
+    text: "Buyers keep asking for photos. You can improve the listing, offer a discount, or wait.",
+    eligibility: { businessId: "buy-resell" },
+    choices: [
+      choice("retake-photos", "Take clear photos and measurements", "The listing answers questions before buyers ask them.", { stats: { knowledge: 4, energy: -5 }, business: { trust: 5 } }),
+      choice("discount-stock", "Offer a R40 discount", "You give up R40 of margin to help move the stock.", { cash: -40, business: { trust: 2 } }),
+      choice("wait-stock", "Keep the current price", "You hold your margin and accept a slower sale.", { stats: { happiness: -2 } }),
+    ],
+  },
+  {
+    id: "office-learning", deck: "corporate", icon: "🖥️", kicker: "ON THE CLOCK",
+    title: "The team switches to software nobody knows yet.",
+    text: "Your normal shift is paid. What matters now is how you handle the learning curve.",
+    eligibility: { career: true },
+    choices: [
+      choice("learn-tool", "Work through the tutorial", "You solve tomorrow's problem before it arrives.", { stats: { knowledge: 6, energy: -5 }, career: { readiness: 4 } }),
+      choice("share-notes", "Learn with a co-worker", "Two sets of notes keep the team moving.", { stats: { knowledge: 3, social: 3 }, career: { coworkers: 5 } }),
+      choice("old-process", "Keep using the old process", "It is comfortable today and harder to defend tomorrow.", { career: { performance: -3, readiness: -2 } }),
+    ],
+  },
+  {
+    id: "later-life-mentor", deck: "community", icon: "🌱", kicker: "EXPERIENCE COUNTS",
+    title: "Someone younger asks how you kept going.",
+    text: "They are starting a small venture and want advice from somebody who has lived a little.",
+    eligibility: { minAge: 60 },
+    choices: [
+      choice("share-lessons", "Share the mistakes as well as the wins", "Your honest advice helps them see the work ahead.", { stats: { reputation: 6, happiness: 4, energy: -3 } }),
+      choice("make-introduction", "Introduce them to a useful contact", "You open a door and let them do the walking.", { stats: { social: 5, reputation: 3 } }),
+      choice("quiet-day", "Wish them well and keep a quiet day", "You are allowed to enjoy your own time too.", { stats: { energy: 8, happiness: 3 } }),
+    ],
+  },
+  {
+    id: "later-life-pace", deck: "relationships", icon: "🌊", kicker: "A DIFFERENT RHYTHM",
+    title: "Your people invite you out for an afternoon by the sea.",
+    text: "There is no deadline. You can take a short walk, sit together, or enjoy home.",
+    eligibility: { minAge: 60, weekend: true },
+    choices: [
+      choice("seaside-walk", "Take a gentle walk together", "Fresh air and familiar voices make a good afternoon.", { stats: { health: 4, happiness: 6, energy: -4 }, relationships: { friend: 4 } }),
+      choice("seaside-lunch", "Share a R65 lunch", "Nobody rushes the conversation.", { cash: -65, stats: { happiness: 7, social: 3 } }),
+      choice("home-afternoon", "Spend a peaceful afternoon at home", "Rest can be a worthwhile plan all by itself.", { stats: { energy: 10, happiness: 3 } }),
+    ],
+  },
+];
+
 export const EVENTS = Object.freeze([
+  ...EVERYDAY_EVENTS,
   {
     id: "taxi-full", deck: "transport", icon: "🚐", kicker: "MORNING RUSH",
     title: "The taxi is full. The conductor says there is space.",
@@ -154,7 +266,7 @@ export const EVENTS = Object.freeze([
   {
     id: "customer-refund", deck: "owner", icon: "🧾", kicker: "YOUR NAME IS ON IT",
     title: "A customer says the job was not good enough.",
-    text: "Your helper disagrees. The customer has already opened their camera.",
+    text: "You remember the job differently. The customer has already opened their camera.",
     eligibility: { business: true },
     choices: [
       choice("redo-job", "Redo it yourself", "The complaint becomes a compliment, at the cost of your afternoon.", { stats: { energy: -9, reputation: 5 }, business: { trust: 8 } }),
@@ -232,15 +344,32 @@ export const EVENTS = Object.freeze([
     id: "street-opportunity", deck: "opportunity", icon: "🪧", kicker: "NEW OPENING",
     title: "A busy corner needs a reliable service.",
     text: "The opportunity is small today and much larger if somebody stays consistent.",
+    eligibility: { weekend: true },
     choices: [
       choice("ask-numbers", "Ask what the numbers look like", "You get facts before excitement.", { stats: { knowledge: 6, reputation: 2 } }),
-      choice("test-weekend", "Offer a weekend trial", "A low-risk test earns a few real customers.", { cash: 80, stats: { energy: -6, reputation: 4 } }),
+      choice("test-weekend", "Do a paid weekend trial", "You complete a small service job and the customer pays R80.", { cash: 80, stats: { energy: -6, reputation: 4 } }),
       choice("save-contact", "Save the contact for later", "The door stays open without becoming today's problem.", { stats: { social: 2 } }),
     ],
   },
 ]);
 
 export const WORK_DECISIONS = Object.freeze([
+  { id: "career-boundaries", path: "career", topic: "workload", title: "Messages arrive after your shift", choices: [
+    choice("set-boundary", "Reply with a plan for tomorrow", "You are clear about when the work will be done.", { career: { readiness: 4 }, stats: { energy: 4 } }),
+    choice("stay-online", "Stay online to sort it out", "The task gets done, but your evening disappears.", { career: { boss: 3, performance: 2 }, stats: { energy: -8, happiness: -3 } }),
+  ] },
+  { id: "career-training", path: "career", topic: "initiative", title: "A new starter needs a walkthrough", choices: [
+    choice("train-starter", "Show them and leave useful notes", "They can work independently tomorrow.", { career: { coworkers: 5, readiness: 4 }, stats: { energy: -5 } }),
+    choice("send-guide", "Send the guide and finish your tasks", "Your deadline survives. They still have questions.", { career: { performance: 2, coworkers: -1 } }),
+  ] },
+  { id: "owner-booking", path: "business", topic: "service", title: "Two customers want the same time slot", choices: [
+    choice("honest-booking", "Offer realistic times", "One waits until tomorrow. Both know what to expect.", { business: { trust: 5 }, stats: { knowledge: 2 } }),
+    choice("overbook", "Promise both you can fit them in", "One order waits and a customer complains.", { business: { trust: -6 }, stats: { energy: -7 } }),
+  ] },
+  { id: "owner-books", path: "business", topic: "pricing", title: "Your cashbook does not match the receipts", choices: [
+    choice("reconcile", "Check each receipt before closing", "You find a recording error. Learning the true numbers takes time, not a cash reward.", { stats: { knowledge: 5, energy: -5 } }),
+    choice("guess", "Estimate it and leave", "Tonight is easier. Tomorrow's decisions use unreliable numbers.", { stats: { energy: 3 }, business: { trust: -3 } }),
+  ] },
   { id: "career-quality", path: "career", topic: "quality", title: "The rushed report", choices: [
     choice("check", "Check every figure", "The report is late and correct.", { career: { performance: 6, readiness: 5 }, stats: { energy: -5 } }),
     choice("send", "Send it before the deadline", "Speed wins today. Two errors remain.", { career: { performance: -4, readiness: -2 } }, { risk: { severity: 35, communication: -6 } }),
@@ -275,17 +404,17 @@ export const WORK_DECISIONS = Object.freeze([
   ] },
   { id: "owner-pricing", path: "business", topic: "pricing", title: "A competitor undercuts you", choices: [
     choice("quality", "Explain your value", "Fewer customers choose you, but better ones stay.", { business: { trust: 4 } }),
-    choice("undercut", "Drop below their price", "Demand rises and the margin disappears.", { cash: 50, business: { trust: -2 } }),
+    choice("undercut", "Drop below their price", "The discount costs you R50 on today's orders. More customers do not always mean more profit.", { cash: -50, business: { trust: -2 } }),
   ] },
-  { id: "owner-stock", path: "business", topic: "stock", title: "Cheap stock becomes available", choices: [
+  { id: "owner-stock", path: "business", topic: "stock", title: "Cheap stock becomes available", eligibility: { businessId: "buy-resell" }, choices: [
     choice("inspect", "Inspect before buying", "You reject half and protect your name.", { cash: -70, business: { trust: 3 } }),
-    choice("bulk", "Buy the whole lot", "The margin looks excellent until complaints begin.", { cash: 160, business: { trust: -7 } }),
+    choice("bulk", "Buy the whole lot", "You spend R160 on stock. Selling it is still work, and the quality is uncertain.", { cash: -160, business: { trust: -7 } }),
   ] },
   { id: "owner-late-job", path: "business", topic: "deadline", title: "A big job is running late", choices: [
     choice("call", "Call the customer now", "The delay is disappointing, not surprising.", { business: { trust: 3 } }),
     choice("hope", "Push silently and hope", "The job finishes after the angry call.", { business: { trust: -6 }, stats: { energy: -5 } }),
   ] },
-  { id: "owner-helper", path: "business", topic: "staff", title: "A helper makes a costly mistake", choices: [
+  { id: "owner-helper", path: "business", topic: "staff", title: "A helper makes a costly mistake", eligibility: { business: true, minStaff: 1 }, choices: [
     choice("teach", "Teach and redo it together", "The cost hurts. The employee improves.", { cash: -90, business: { trust: 3 }, stats: { energy: -5 } }),
     choice("blame", "Blame them in front of the customer", "The customer gets an answer. The team gets a warning.", { business: { trust: -2 }, stats: { reputation: -4 } }),
   ] },
@@ -295,12 +424,15 @@ export const WORK_DECISIONS = Object.freeze([
   ] },
   { id: "owner-equipment", path: "business", topic: "equipment", title: "Equipment fails mid-job", choices: [
     choice("repair", "Pay for a proper repair", "The day costs money and tomorrow stays possible.", { cash: -140, business: { trust: 2 } }),
-    choice("improvise", "Improvise to finish", "You finish, slowly and loudly.", { cash: 60, stats: { energy: -9 }, business: { trust: -1 } }),
+    choice("improvise", "Improvise to finish", "You finish slowly. The payment is part of today's normal sales.", { stats: { energy: -9 }, business: { trust: -1 } }),
   ] },
 ]);
 
 export function isEventEligible(event, state) {
   const rule = event.eligibility || {};
+  if (rule.minAge && state.calendar.age < rule.minAge) return false;
+  if (rule.maxAge && state.calendar.age > rule.maxAge) return false;
+  if (rule.minStaff && state.business.staff.length < rule.minStaff) return false;
   if (rule.career && !state.career.active) return false;
   if (rule.business && !state.business.active) return false;
   if (rule.businessId && state.business.id !== rule.businessId) return false;

@@ -10,6 +10,18 @@ Progress saves in the current browser. v0.9 uses `one-more-day-v09`. Existing v0
 
 ## Included in v0.9 — Life Begins
 
+### Core gameplay patch — 30 September 2026
+
+- Event decks and chronological cooldown histories survive saving and reloading.
+- Headline, transport and work situations rotate separately, with up to ten recent eligible scenarios protected from immediate reuse.
+- Ten additional everyday scenarios and four work decisions vary by age, business type, staffing and weekend availability.
+- Health, happiness, knowledge, social and reputation appear above the current decision; relationships stay in the phone.
+- All decision buttons use the same neutral style.
+- Stock purchases and discounts cost money; paid side jobs describe the work and payment. Daily salary and business earnings appear as separate end-of-day income explanations.
+- Existing v0.9 saves continue using the same save key and schema.
+
+The chase redesign, business staff limits and gambling app are separate follow-up work.
+
 - A short final-day-of-school opening: last morning, final exam, result, school ending, and first adult opportunity
 - Four seeded starter people—guardian, friend, classmate, and mentor—with different names, traits, reactions, and stable relationships in every save
 - A bright, uncluttered mobile play screen focused on one decision at a time
@@ -39,6 +51,12 @@ assets/credits.md             Cover-image attribution
 ## Run the checks
 
 Run each `.mjs` file in `tests/` with Node.js. The suite covers the v0.8 foundation and the complete v0.9 school, people, phone, timeline, aging, migration, and ending flows.
+
+```sh
+for test_file in tests/*.mjs; do node --experimental-vm-modules "$test_file" || exit 1; done
+```
+
+The VM flag is required for `syntax-check.mjs`.
 
 ## GitHub Pages
 

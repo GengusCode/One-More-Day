@@ -40,7 +40,7 @@ body{
 .game-header .eyebrow{color:#31735a}
 .welcome{color:#23362e;font-size:clamp(1.05rem,4.5vw,1.3rem)}
 .icon-button{min-height:44px;border-color:rgba(23,35,29,.13);background:#fff;color:#315246;box-shadow:0 5px 16px rgba(48,71,58,.08)}
-.hud{gap:8px;margin:16px 0 18px}
+.hud{gap:8px;margin:16px 0 8px}
 .hud>div{padding:11px 6px;border:1px solid rgba(23,35,29,.08);background:rgba(255,255,255,.76);box-shadow:0 5px 14px rgba(73,55,22,.055)}
 .hud>div:nth-child(1){border-bottom:3px solid var(--blue)}
 .hud>div:nth-child(2){border-bottom:3px solid var(--coral)}
@@ -48,6 +48,12 @@ body{
 .hud>div:nth-child(4){border-bottom:3px solid var(--gold)}
 .hud span{color:#758078}
 .hud strong{color:#1e3028}
+.personal-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0 0 18px}
+.personal-stats>div{min-width:0;padding:9px 6px;border:1px solid rgba(23,35,29,.08);border-radius:13px;background:rgba(255,255,255,.76);text-align:center}
+.personal-stats span{display:block;color:#58675e;font-size:.875rem;font-weight:700}
+.personal-stats strong{display:block;margin-top:3px;color:#1e3028;font-size:1rem}
+.personal-stats small{margin-left:3px;color:#647069;font-size:.875rem;font-weight:500}
+@media(min-width:600px){.personal-stats{grid-template-columns:repeat(5,minmax(0,1fr))}}
 .event-card{
   position:relative;
   overflow:hidden;
@@ -74,7 +80,6 @@ body{
 .decision:hover:not(:disabled){transform:translateY(-2px);border-color:rgba(34,168,102,.45);background:#f7fff9;box-shadow:0 6px 0 rgba(34,168,102,.13)}
 .decision:active:not(:disabled){transform:translateY(2px);box-shadow:none}
 .decision small{color:#69766e}
-.decision--feature{border-color:rgba(247,185,40,.65);background:#fff9e6}
 .result{border:1px solid rgba(34,168,102,.17);background:#eefaf3;color:#235a41}
 .button{min-height:50px}
 .button--primary{background:#173f32;color:#fff;box-shadow:0 7px 0 #0e281f}

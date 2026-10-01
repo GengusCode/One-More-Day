@@ -1,4 +1,5 @@
 import { applyEffects } from "../core/state.js";
+import { formatRand } from "../data/economy.js";
 import { EVENTS, WORK_DECISIONS, getEventById, isEventEligible } from "../data/events.js";
 import {
   createDeckState,
@@ -7,7 +8,7 @@ import {
   resolveDueEvents,
   scheduleDelayedEvent,
 } from "./event-deck.js";
-import { startCareer, resolveCareerChoice, settleCareerDay, getCareerDecisionIds } from "./career.js";
+import { startCareer, resolveCareerChoice, settleCareerDay } from "./career.js";
 import { startBusiness, resolveOwnerChoice, settleBusinessDay } from "./business.js";
 import { getTravelOptions, resolveTravel, resetDailyTransport, assignCarForDay } from "./travel.js";
 import { advanceLifeCalendar, evaluateLifeEnding, getSchoolDecision } from "./life.js";
@@ -106,7 +107,8 @@ function drawHeadline(state, random, { transportOnly = false, excludeTransport =
     return next;
   }
   const ids = eligible.map((event) => event.id);
-  const deck = state.eventDecks.headline || createDeckState(ids, random);
+  const deckKey = transportOnly ? "transport" : "headline";
+  const deck = state.eventDecks[deckKey] || createDeckState(ids, random);
   const drawn = drawEvent({
     deckState: deck,
     eligibleIds: ids,
@@ -115,7 +117,7 @@ function drawHeadline(state, random, { transportOnly = false, excludeTransport =
   });
   const event = eligible.find((item) => item.id === drawn.eventId) || eligible[0];
   let next = clone(state);
-  next.eventDecks.headline = drawn.deckState;
+  next.eventDecks[deckKey] = drawn.deckState;
   next.eventHistory.headlineIds = [...next.eventHistory.headlineIds, event.id].slice(-40);
   return setHeadline(next, event, random);
 }
@@ -124,11 +126,17 @@ function assignWorkDecision(state, random) {
   const next = clone(state);
   if (!isWorkingDay(next) || !hasPath(next)) return next;
   if (random() >= 0.42) return next;
-  const choices = next.career.active
-    ? getCareerDecisionIds(next)
-    : WORK_DECISIONS.filter((item) => item.path === "business").map((item) => item.id);
+  const path = next.career.active ? "career" : "business";
+  const choices = WORK_DECISIONS.filter((item) => item.path === path && isEventEligible(item, next)).map((item) => item.id);
   if (!choices.length) return next;
-  next.dailyState.workDecisionId = choices[Math.floor(random() * choices.length)];
+  const deckKey = "work-" + path;
+  const drawn = drawEvent({
+    deckState: next.eventDecks[deckKey], eligibleIds: choices,
+    recentIds: next.eventHistory.workIds || [], random,
+  });
+  next.dailyState.workDecisionId = drawn.eventId;
+  next.eventDecks[deckKey] = drawn.deckState;
+  next.eventHistory.workIds = [...(next.eventHistory.workIds || []), drawn.eventId].slice(-40);
   return next;
 }
 
@@ -330,6 +338,15 @@ export function resolveWork(state, choiceId, { random = Math.random } = {}) {
         ? settleBusinessDay(next, { day: next.calendar.day, operating: true, random })
         : { state: next };
     next = result.state;
+    const income = result.transactions?.find((item) => ["salary", "business-income"].includes(item.source));
+    if (income) {
+      const receipt = income.source === "salary"
+        ? `Your shift paid ${formatRand(income.amount)}.`
+        : income.amount >= 0
+          ? `Today's business sales left ${formatRand(income.amount)} after staff wages.`
+          : `Today's business costs exceeded sales by ${formatRand(-income.amount)}.`;
+      next.dailyState.result = [next.dailyState.result, receipt].filter(Boolean).join(" ");
+    }
   }
   return finishDay(next);
 }

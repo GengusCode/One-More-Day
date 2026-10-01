@@ -104,6 +104,7 @@ export function createDefaultState() {
     assets: { ownedUpgradeIds: [], items: {} },
     eventHistory: {
       headlineIds: [],
+      workIds: [],
       choiceOrders: {},
       resolvedOutcomeIds: [],
     },
@@ -365,7 +366,20 @@ export function validateState(candidate) {
 
   state.transport.owned = uniqueStrings(source.transport?.owned);
   state.assets.ownedUpgradeIds = uniqueStrings(source.assets?.ownedUpgradeIds);
-  state.eventHistory.headlineIds = uniqueStrings(source.eventHistory?.headlineIds).slice(-40);
+  // These are chronological logs: repeated IDs must retain their latest position.
+  state.eventHistory.headlineIds = (Array.isArray(source.eventHistory?.headlineIds) ? source.eventHistory.headlineIds : [])
+    .filter((id) => typeof id === "string").slice(-40);
+  state.eventHistory.workIds = (Array.isArray(source.eventHistory?.workIds) ? source.eventHistory.workIds : [])
+    .filter((id) => typeof id === "string").slice(-40);
+  // copyKnown intentionally drops unknown object keys; restore the supported decks.
+  for (const key of ["headline", "transport", "work-career", "work-business"]) {
+    const deck = source.eventDecks?.[key];
+    if (!deck || !Array.isArray(deck.order)) continue;
+    state.eventDecks[key] = {
+      order: uniqueStrings(deck.order).slice(-100),
+      seen: uniqueStrings(deck.seen).slice(-100),
+    };
+  }
   state.eventHistory.resolvedOutcomeIds = uniqueStrings(source.eventHistory?.resolvedOutcomeIds).slice(-100);
   state.dailyState.settledIds = uniqueStrings(source.dailyState?.settledIds);
   state.dailyState.travelContext = source.dailyState?.travelContext
