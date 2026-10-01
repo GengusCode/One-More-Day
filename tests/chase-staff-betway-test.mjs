@@ -15,15 +15,15 @@ test('bets accept a custom affordable amount and cannot spend unavailable money'
  assert.equal(state.finances.cash,137);
  assert.equal(betting.placeBet(lost.state,1).ok,false);
 });
-test('jackpots return 30 times the stake and survive saving',()=>{
+test('jackpots return 118 times the stake and survive saving',()=>{
  const state=adult(); state.finances.cash=100;
- const won=betting.placeBet(state,7,{random:()=>0.001});
- assert.equal(won.state.finances.cash,303);
- assert.equal(won.state.betting.lastResult.payout,210);
+ const won=betting.placeBet(state,7,{random:()=>0.0005});
+ assert.equal(won.state.finances.cash,919);
+ assert.equal(won.state.betting.lastResult.payout,826);
  assert.equal(won.state.finances.transactions.length,2);
  const saved=validateState(won.state);
  assert.deepEqual(saved.betting,won.state.betting);
- assert.equal(saved.finances.cash,303);
+ assert.equal(saved.finances.cash,919);
 
 });
 test('staff limits depend on the business and equipment expands capacity',()=>{

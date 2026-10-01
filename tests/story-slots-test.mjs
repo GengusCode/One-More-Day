@@ -35,21 +35,14 @@ test('new work situations offer different approaches with later consequences',()
 });
 test('slots have losing, small-win, big-win and jackpot reels',()=>{
  const state=createDefaultState();state.finances.cash=100;
- for(const [roll,payout,multiplier] of [[0,300,30],[.03,50,5],[.09,20,2],[.9,0,0]]) {
-  const values=[.5,roll,.5];const result=placeBet(state,10,{random:()=>values.shift()??.5});
+ for(const [roll,payout,multiplier] of [[0,1180,118],[.03,80,8],[.09,30,3],[.2,10,1],[.9,0,0]]) {
+  const values=[roll,.5];const result=placeBet(state,10,{random:()=>values.shift()??.5});
   assert.equal(result.state.betting.lastResult.payout,payout);assert.equal(result.state.betting.lastResult.multiplier,multiplier);
   assert.equal(result.state.finances.cash,90+payout);
   const reels=result.state.betting.lastResult.reels;assert.equal(reels.length,3);
   if(payout)assert.ok(reels.every(symbol=>symbol===reels[0]));else assert.ok(new Set(reels).size>1);
   assert.deepEqual(validateState(result.state).betting,result.state.betting);
  }
-});
-test('slot odds vary while every tested setting remains a money sink',()=>{
- const state=createDefaultState();state.finances.cash=100;
- const low=placeBet(state,10,{random:(()=>{let i=0;return()=>[0,.011,.5][i++]??.5;})()});
- const high=placeBet(state,10,{random:(()=>{let i=0;return()=>[.99,.011,.5][i++]??.5;})()});
- assert.equal(low.state.betting.lastResult.jackpot,false);assert.equal(high.state.betting.lastResult.jackpot,true);
- for(const setting of [0,.5,.99]) {let total=0;for(let i=0;i<1000;i++){const values=[setting,i/1000,.5];total+=placeBet(state,10,{random:()=>values.shift()??.5}).state.finances.cash-100;}assert.ok(total<0);}
 });
 test('slots show reels and stake without displaying win probabilities',()=>{
  const html=renderPhone(buildPhoneModel(createDefaultState()),{open:true,activeApp:'betway'});

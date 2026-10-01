@@ -16,9 +16,9 @@ await bet();assert.equal(saved.finances.cash,90);assert.ok(saved.betting.pending
 await bet();assert.equal(saved.betting.rounds,1,'double taps cannot begin another spin');
 timers.shift()();await flush();assert.equal(saved.finances.cash,90);
 timers.shift()();await flush();assert.equal(saved.finances.cash,90);
-timers.shift()();await flush();assert.equal(saved.finances.cash,390);assert.equal(saved.betting.pendingResult,null);assert.match(root.html,/Payout R300/);assert.match(root.html,/Profit R290/);
-await bet();assert.equal(saved.finances.cash,380);assert.ok(saved.betting.pendingResult);
-await import('../js/app.js?slot-recovery');await click('CONTINUE_LIFE');assert.equal(saved.finances.cash,680);assert.equal(saved.betting.rounds,2);assert.equal(saved.betting.pendingResult,null);
-await click('CONTINUE_LIFE');assert.equal(saved.finances.cash,680,'reload recovery cannot pay the same result twice');
+timers.shift()();await flush();assert.equal(saved.finances.cash,1270);assert.equal(saved.betting.pendingResult,null);assert.match(root.html,/Payout R1[,\s]180/);assert.match(root.html,/Profit R1[,\s]170/);
+await bet();assert.equal(saved.finances.cash,1260);assert.ok(saved.betting.pendingResult);
+await import('../js/app.js?slot-recovery');await click('CONTINUE_LIFE');assert.equal(saved.finances.cash,2440);assert.equal(saved.betting.rounds,2);assert.equal(saved.betting.pendingResult,null);
+await click('CONTINUE_LIFE');assert.equal(saved.finances.cash,2440,'reload recovery cannot pay the same result twice');
 Math.random=originalRandom;
 console.log('slot controls: staged payout, duplicate taps and interrupted-spin recovery passed');

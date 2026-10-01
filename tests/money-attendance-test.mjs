@@ -46,9 +46,9 @@ test('spin debits the stake first and credits the saved outcome exactly once on 
   assert.equal(betting.beginBet(s,10).ok,false);
   s=validateState(s);
   const finished=betting.completeBet(s);
-  assert.equal(finished.state.finances.cash,390);
-  assert.equal(finished.state.betting.lastResult.payout,300);
-  assert.equal(betting.completeBet(finished.state).state.finances.cash,390);
+  assert.equal(finished.state.finances.cash,1270);
+  assert.equal(finished.state.betting.lastResult.payout,1180);
+  assert.equal(betting.completeBet(finished.state).state.finances.cash,1270);
   assert.equal(finished.state.finances.transactions.filter(tx=>tx.source==='betway-jackpot').length,1);
 });
 

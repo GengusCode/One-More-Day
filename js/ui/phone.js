@@ -188,11 +188,11 @@ function betwayApp(state, { slotsSpinning = false } = {}) {
   const unavailable = slotsSpinning || state.life.stage === "school-finale" || state.life.ended || state.finances.cash < 1;
   return { summary: `Cash ${formatRand(state.finances.cash)}`, cards: [{
     id: "betway", title: "Lucky reels", icon: "🎰", badge: "Game money only",
-    text: slotsSpinning ? `Reels are turning… Stake ${formatRand(state.betting.pendingResult?.stake || 0)}. The result arrives when they stop.` : last ? `${last.jackpot ? 'JACKPOT! ' : last.payout ? 'You matched three! ' : 'No match. '}Stake ${formatRand(last.stake)} · Payout ${formatRand(last.payout)} · ${last.payout>=last.stake?'Profit':'Loss'} ${formatRand(Math.abs(last.payout-last.stake))}.` : "Choose your stake and spin. Three matching symbols pay; other spins lose the stake.",
+    text: slotsSpinning ? `Reels are turning… Stake ${formatRand(state.betting.pendingResult?.stake || 0)}. The result arrives when they stop.` : last ? `${last.jackpot ? 'JACKPOT! ' : last.payout === last.stake ? 'Stake returned. ' : last.payout ? 'You matched three! ' : 'No match. '}Stake ${formatRand(last.stake)} · Payout ${formatRand(last.payout)} · ${last.payout>=last.stake?'Profit':'Loss'} ${formatRand(Math.abs(last.payout-last.stake))}.` : "Choose your stake and spin. Three matching symbols pay; other spins lose the stake.",
     slots: { reels: last?.reels || ['🍒', '💎', '7️⃣'], spinning: slotsSpinning, won: !slotsSpinning && last?.payout > 0 },
     bet: { max: Math.max(0, Math.floor(state.finances.cash)), disabled: unavailable },
     actions: [action("all", "BET_ALL", "Spin with all available cash", formatRand(state.finances.cash), unavailable)],
-  }, { id: "betting-record", title: "Your record", icon: "📊", badge: `${state.betting.rounds} bets`, text: slotsSpinning ? "Waiting for the reels…" : `Staked ${formatRand(state.betting.totalStaked)} · Returned ${formatRand(state.betting.totalPaid)} · Net ${formatRand(state.betting.totalPaid - state.betting.totalStaked)}`, actions: [] }] };
+  }, {id: "slot-payouts", title: "Symbol payouts", icon: "🎰", badge: "Three matching symbols", text: "🍒 Stake returned · 🔔 3× stake · 💎 8× stake · 7️⃣ Jackpot: 118× stake. Payout includes your original stake.", actions: []}, { id: "betting-record", title: "Your record", icon: "📊", badge: `${state.betting.rounds} bets`, text: slotsSpinning ? "Waiting for the reels…" : `Staked ${formatRand(state.betting.totalStaked)} · Returned ${formatRand(state.betting.totalPaid)} · Net ${formatRand(state.betting.totalPaid - state.betting.totalStaked)}`, actions: [] }] };
 }
 
 function renderMoneyHistory(report) {
