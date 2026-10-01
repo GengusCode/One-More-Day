@@ -465,13 +465,14 @@ export function settleRoutineDay(state, { random = Math.random, driverMode = fal
 
   next = applyEffects(next, { stats: { energy: -3, happiness: next.calendar.day % 30 === 0 ? -1 : 0 } }, { source: "routine-day" }).state;
   next = finishDay(next);
-  const reason = status.promotion ? "promotion"
+  const repossessed = next.garage.vehicles.some(v => v.status === "repossessed" && state.garage.vehicles.find(old => old.id === v.id)?.status === "owned");
+  const reason = repossessed ? "vehicle-repossessed" : status.promotion ? "promotion"
     : status.dismissed ? "dismissed"
       : status.reason === "closed" ? "business-closed"
         : next.stats.health <= 15 ? "critical-health"
           : state.finances.cash >= 0 && next.finances.cash < 0 ? "low-cash"
             : "";
-  if (reason) next.dailyState.result = reason === "promotion"
+  if (reason && reason !== "vehicle-repossessed") next.dailyState.result = reason === "promotion"
     ? `Promotion: you are now ${next.career.role}.`
     : reason === "dismissed" ? "Your employment has ended."
       : reason === "business-closed" ? "Your business has closed."

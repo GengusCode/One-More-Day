@@ -105,6 +105,7 @@ export function createDefaultState() {
       dailyAssignment: null,
       lastTravelDay: 0,
     },
+    garage: { vehicles: [], history: [] },
     assets: { ownedUpgradeIds: [], items: {} },
     eventHistory: {
       headlineIds: [],
@@ -183,8 +184,9 @@ export function calculateNetWorth(state) {
     (total, item) => total + Math.max(0, Number(item?.value) || 0),
     0,
   );
+  const vehicleEquity = (state.garage?.vehicles || []).reduce((sum, vehicle) => sum + (Number(vehicle.value) || 0) - (Number(vehicle.remaining) || 0), 0);
   const businessValue = Math.max(0, Number(state.business?.value) || 0);
-  return Math.round((Number(state.finances?.cash) || 0) + assetValue + businessValue + Math.max(0, Number(state.stokvel?.balance) || 0));
+  return Math.round((Number(state.finances?.cash) || 0) + assetValue + businessValue + vehicleEquity + Math.max(0, Number(state.stokvel?.balance) || 0));
 }
 
 function addRelationshipEffects(next, effects) {

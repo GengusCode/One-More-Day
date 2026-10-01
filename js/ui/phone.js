@@ -1,3 +1,4 @@
+import { canBuyBusinessVehicle } from "../systems/vehicles.js";
 import { stokvelMonth } from "../systems/household.js";
 import { formatRand } from "../data/economy.js";
 import { BUSINESS_UPGRADES, getStaffLimit } from "../systems/business.js";
@@ -82,10 +83,33 @@ function transportApp(state) {
   };
 }
 
+function garageCards(state) {
+  const cards = [{ id: "garage", icon: "🚘", title: "Your garage & fleet", badge: `${state.garage.vehicles.filter(v => v.status === 'owned').length} purchases owned`,
+    text: state.garage.vehicles.length ? "Your purchases stay visible as their story unfolds." : "What will success look like: your dream car or a bigger business? Keep saving or choose a purchase below.",
+    vehicles: state.garage.vehicles, actions: [] }];
+  if (state.business.active && !state.garage.vehicles.some(v => v.id === 'sports')) cards.push({
+    id: 'sports-offer', icon: '✨', title: 'Enjoy your success', badge: 'Luxury sports car', art: 'sports',
+    text: 'Benefit: +12 happiness and +4 reputation. Cost: R12,000 deposit, then R2,000 every 30 days for 30 payments, plus R60 daily upkeep. No business income. Three consecutive missed payments cause repossession; any loan shortfall stays as debt.',
+    actions: [action('sports', 'BUY_BUSINESS_VEHICLE', 'Choose the sports car', 'R12,000 upfront · R72,000 total price', !canBuyBusinessVehicle(state, 'sports'))] });
+  if (state.business.active && ['moving-service','buy-resell'].includes(state.business.id) && !state.garage.vehicles.some(v => v.id === 'fleet')) cards.push({
+    id: 'fleet-offer', icon: '📦', title: 'Invest in your business', badge: 'Three delivery vans', art: 'fleet',
+    text: 'Benefit: more delivery sales when customers trust your business. Cost: R24,000 upfront and R80 daily for fuel, upkeep and delivery labour, plus supplies. Quiet days and weekends can lose money. Review the results after 30 days.',
+    actions: [action('fleet', 'BUY_BUSINESS_VEHICLE', 'Choose the delivery fleet', 'R24,000 upfront · R80 daily upkeep', !canBuyBusinessVehicle(state, 'fleet'))] });
+  if (state.garage.history.length) cards.push({ id: 'garage-history', icon: '📩', title: 'Your purchase story', badge: 'Choices have consequences', text: state.garage.history.slice(-3).join(' '), actions: [] });
+  return cards;
+}
+function renderVehicleArt(id, lost = false) {
+  return `<div class="vehicle-art vehicle-art--${safe(id)} ${lost ? 'vehicle-art--lost' : ''}" role="img" aria-label="${id === 'sports' ? 'Red luxury sports car' : 'Three delivery vans'}${lost ? ' — repossessed' : ''}">${lost ? '<span>REPOSSESSED</span>' : ''}</div>`;
+}
+function renderGarage(vehicles) {
+  if (!vehicles.length) return '<div class="garage-empty">A new chapter starts with an empty garage.</div>';
+  return vehicles.map(v => `<div class="garage-vehicle">${renderVehicleArt(v.id, v.status === 'repossessed')}<strong>${safe(v.name)}</strong><small>${v.status === 'repossessed' ? 'Repossessed · no longer yours' : `${formatRand(v.upkeep)} daily upkeep${v.remaining ? ` · Finance ${formatRand(v.remaining)} · Next payment day ${v.nextPaymentDay}` : ' · Paid off'}`}</small></div>`).join('');
+}
+
 function businessApp(state) {
   if (!state.business.active) return {
     summary: "No active business",
-    cards: [{ id: "business-none", icon: "🌱", title: "Build from the ground up", text: "Startup opportunities appear in Jobs.", badge: "Not started", actions: [] }],
+    cards: [{ id: "business-none", icon: "🌱", title: "Build from the ground up", text: "Startup opportunities appear in Jobs.", badge: "Not started", actions: [] }, ...garageCards(state)],
   };
   const upgrades = Object.entries(BUSINESS_UPGRADES)
     .filter(([id, item]) => item.businessId === state.business.id && !state.assets.ownedUpgradeIds.includes(id));
@@ -99,7 +123,7 @@ function businessApp(state) {
         ...upgrades.map(([id, item]) => action(id, "BUY_UPGRADE", `Buy ${item.name}`, formatRand(item.cost), state.finances.cash < item.cost)),
         action("helper", "HIRE_EMPLOYEE", "Hire a helper", "R80 daily wage · Equipment expands staff slots", state.business.staff.length >= getStaffLimit(state)),
       ],
-    }],
+    }, ...garageCards(state)],
   };
 }
 
@@ -183,7 +207,7 @@ export function renderPhone(model, { open = false, activeApp = "home" } = {}) {
   if (!open) return "";
   const selected = model.apps.find((app) => app.id === activeApp);
   const content = selected
-    ? `<header class="phone-screen__header"><button type="button" data-action="OPEN_PHONE_APP" data-app="home" aria-label="Back to apps">‹</button><span>${safe(selected.icon)}</span><div><strong>${safe(selected.title)}</strong><small>${safe(selected.summary)}</small></div></header><div class="phone-cards">${selected.cards.map((card) => `<article class="phone-card"><div class="phone-card__top"><span>${safe(card.icon)}</span><small>${safe(card.badge)}</small></div><h3>${safe(card.title)}</h3><p>${safe(card.text)}</p>${card.slots ? renderSlots(card.slots) : ""}${card.bet ? renderBetForm(card.bet) : ""}<div class="phone-card__actions">${card.actions.map(renderAction).join("")}</div></article>`).join("")}</div>`
+    ? `<header class="phone-screen__header"><button type="button" data-action="OPEN_PHONE_APP" data-app="home" aria-label="Back to apps">‹</button><span>${safe(selected.icon)}</span><div><strong>${safe(selected.title)}</strong><small>${safe(selected.summary)}</small></div></header><div class="phone-cards">${selected.cards.map((card) => `<article class="phone-card"><div class="phone-card__top"><span>${safe(card.icon)}</span><small>${safe(card.badge)}</small></div><h3>${safe(card.title)}</h3><p>${safe(card.text)}</p>${card.art ? renderVehicleArt(card.art) : ""}${card.vehicles ? renderGarage(card.vehicles) : ""}${card.slots ? renderSlots(card.slots) : ""}${card.bet ? renderBetForm(card.bet) : ""}<div class="phone-card__actions">${card.actions.map(renderAction).join("")}</div></article>`).join("")}</div>`
     : `<header class="phone-screen__header phone-screen__header--home"><div><strong>${safe(model.greeting || "Your phone")}</strong><small>${model.notifications.length ? safe(model.notifications[0].text) : "Everything you need, tucked away."}</small></div></header><div class="phone-app-grid">${model.apps.map((app) => `<button class="phone-app phone-app--${safe(app.colour)}" type="button" data-action="OPEN_PHONE_APP" data-app="${safe(app.id)}"><span class="phone-app__icon">${safe(app.icon)}</span><strong>${safe(app.title)}</strong><small>${safe(app.summary)}</small></button>`).join("")}</div>`;
   return `<div class="phone-overlay" role="dialog" aria-modal="true" aria-label="Phone"><button class="phone-overlay__backdrop" type="button" data-action="CLOSE_PHONE" aria-label="Close phone"></button><section class="phone-device"><div class="phone-device__speaker"></div><button class="phone-close" type="button" data-action="CLOSE_PHONE" aria-label="Close phone">×</button><div class="phone-screen">${content}</div><div class="phone-device__home" aria-hidden="true"></div></section></div>`;
 }

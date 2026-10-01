@@ -9,6 +9,7 @@ import {
 import { isCompatiblePageVersion } from "./core/version.js";
 import { createRenderer } from "./ui/render.js";
 import { createMoneyFeedback } from "./ui/money-feedback.js";
+import { buyBusinessVehicle } from "./systems/vehicles.js";
 import { buyUpgrade, hireEmployee } from "./systems/business.js";
 import { buyTransportAsset, assignCarForDay } from "./systems/travel.js";
 import { chooseSchoolDecision, expireEntranceQuestion } from "./systems/life.js";
@@ -272,6 +273,13 @@ async function dispatch(action, payload = {}) {
   if (action === "PAY_STOKVEL") {
     const result = contributeStokvel(state, payload.id === "partial" ? 80 : 180);
     if (!result.ok) error = "You cannot afford this contribution, or this month is already paid.";
+    else await commit(result.state);
+    render();
+    return;
+  }
+  if (action === "BUY_BUSINESS_VEHICLE") {
+    const result = buyBusinessVehicle(state, payload.id);
+    if (!result.ok) error = "This purchase is unavailable or you cannot afford the upfront cost.";
     else await commit(result.state);
     render();
     return;

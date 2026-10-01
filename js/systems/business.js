@@ -1,3 +1,4 @@
+import { fleetSales } from "./vehicles.js";
 import { applyEffects, calculateNetWorth } from "../core/state.js";
 import { ECONOMY } from "../data/economy.js";
 import { WORK_DECISIONS } from "../data/events.js";
@@ -121,11 +122,15 @@ export function settleBusinessDay(state, { day = state.calendar.day, operating =
   let transactions = [];
   if (operating) {
     const demand = 0.65 + next.business.trust / 100 * 0.7;
-    const variation = 0.9 + random() * 0.2;
-    const gross = Math.round(next.business.baselineRevenue * Math.min(3.5, Math.pow(next.business.capacity, 0.65)) * demand * variation);
+    const roll = random();
+    const variation = 0.9 + roll * 0.2;
+    const fleetGross = fleetSales(next, roll);
+    const gross = Math.round(next.business.baselineRevenue * Math.min(3.5, Math.pow(next.business.capacity, 0.65)) * demand * variation) + fleetGross;
     const wages = next.business.staff.reduce((sum, employee) => sum + Number(employee.wage || 0), 0);
     const supplies = Math.round(gross * (next.business.id === "buy-resell" ? 0.55 : 0.25));
     const overhead = 10 + next.business.premises.length * 25;
+    const fleet = next.garage.vehicles.find(v => v.id === "fleet" && v.status === "owned" && v.businessId === next.business.id);
+    if (fleet) fleet.salesTotal += fleetGross - Math.round(fleetGross * (next.business.id === "buy-resell" ? 0.55 : 0.25));
     const net = gross - supplies - overhead - wages;
     Object.assign(status, { gross, supplies, overhead, wages });
     const settled = applyEffects(next, { cash: net, stats: { energy: -9 } }, { source: "business-income" });

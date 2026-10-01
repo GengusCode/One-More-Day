@@ -1,3 +1,4 @@
+import { settleVehicleDay } from './vehicles.js';
 import { applyEffects, calculateNetWorth } from '../core/state.js';
 
 export function stokvelMonth(day) { return Math.floor(((day - 1) % 365) * 12 / 365); }
@@ -33,6 +34,7 @@ export function settleHouseholdDay(state) {
   const day = next.calendar.day;
   const cost = 25 + (day % 7 === 0 ? 70 : 0) + (day % 30 === 0 ? 450 : 0);
   next = applyEffects(next, { cash: -cost }, { source: 'living-costs' }).state;
+  next = settleVehicleDay(next);
   next.household.lastSettledDay = day;
   next.household.lastCost = cost;
   next.dailyState.result = `${next.dailyState.result || ''} Living costs: R${cost}${day % 30 === 0 ? ' including housing' : ''}${day % 7 === 0 ? ' including electricity' : ''}.${next.finances.cash < 0 ? ' Your negative balance is money you owe.' : ''}`.trim();
