@@ -10,7 +10,7 @@ import { isCompatiblePageVersion } from "./core/version.js";
 import { createRenderer } from "./ui/render.js";
 import { createMoneyFeedback } from "./ui/money-feedback.js";
 import { buyBusinessVehicle, setVehicleParking, changeHome, selectPersonalVehicle } from "./systems/vehicles.js";
-import { buyUpgrade, hireEmployee } from "./systems/business.js";
+import { buyUpgrade, hireEmployee, expandBusiness } from "./systems/business.js";
 import { buyTransportAsset, assignCarForDay } from "./systems/travel.js";
 import { chooseSchoolDecision, expireEntranceQuestion } from "./systems/life.js";
 import { applyForJob } from "./systems/jobs.js";
@@ -307,6 +307,13 @@ async function dispatch(action, payload = {}) {
     render();
     return;
   }
+  if (action === 'EXPAND_BUSINESS') {
+    const result = expandBusiness(state);
+    if (result.ok) await commit(result.state);
+    else error = result.reason;
+    render({announcement: result.ok ? 'Business expanded. Three more staff slots are available; operating overhead increases by R25.' : ''});
+    return;
+  }
   if (action === "BUY_UPGRADE") {
     const result = buyUpgrade(state, payload.id);
     if (!result.ok) error = "That upgrade is not available right now.";
@@ -316,7 +323,7 @@ async function dispatch(action, payload = {}) {
   }
   if (action === "HIRE_EMPLOYEE") {
     const result = hireEmployee(state, payload.id);
-    if (!result.ok) error = result.reason === "staff-limit" ? "Your business has reached its staff limit. Buy equipment to expand." : "You cannot hire that person right now.";
+    if (!result.ok) error = result.reason === "staff-limit" ? "Your business has reached its staff limit. Buy equipment or open premises to expand." : "You cannot hire that person right now.";
     else await commit(result.state);
     render({announcement:result.ok?'Helper hired. Their wages are charged on operating days.':''});
     return;

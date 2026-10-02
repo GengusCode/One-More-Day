@@ -24,6 +24,29 @@ export const BUSINESS_UPGRADES = Object.freeze({
   "resell-delivery": { businessId: "buy-resell", name: "Delivery setup", cost: 3_000, capacity: 2, value: 2_100 },
 });
 
+export const BUSINESS_EXPANSIONS = Object.freeze([
+  {id:'commercial-site',name:'Commercial premises',cost:30000,value:26000,capacity:2,requiredStaff:2},
+  {id:'second-branch',name:'Second branch',cost:75000,value:65000,capacity:3,requiredStaff:4},
+]);
+export function getExpansionOffer(state) {
+  const offer = BUSINESS_EXPANSIONS[state.business.premises.length];
+  if (!offer || !state.business.active || state.business.closed || state.life.ended || state.life.stage === 'school-finale') return {offer:null,ok:false,reason:'Expansion unavailable.'};
+  const reason = state.business.staff.length < offer.requiredStaff ? `Build a team of ${offer.requiredStaff} staff first.` : state.business.trust < 55 ? 'Customer trust must be at least 55.' : state.finances.cash < offer.cost ? 'Save enough for the upfront cost.' : '';
+  return {offer,ok:!reason,reason};
+}
+export function expandBusiness(state) {
+  const eligibility = getExpansionOffer(state);
+  if (!eligibility.ok) return {state,ok:false,reason:eligibility.reason};
+  const offer = eligibility.offer;
+  const next = applyEffects(state,{cash:-offer.cost},{source:'business-expansion',label:`Open ${offer.name.toLowerCase()}`}).state;
+  next.business.premises.push({id:offer.id,name:offer.name,value:offer.value,openedDay:next.calendar.day});
+  next.business.capacity += offer.capacity;
+  next.business.value += offer.value;
+  next.business.title = getBusinessTitle(next.business);
+  next.finances.netWorth = calculateNetWorth(next);
+  return {state:next,ok:true};
+}
+
 const EMPLOYEE_ROLES = Object.freeze({
   helper: { name: "Helper", capacity: 1, wage: 80 },
   specialist: { name: "Skilled worker", capacity: 2, wage: 150 },
@@ -125,7 +148,7 @@ export function settleBusinessDay(state, { day = state.calendar.day, operating =
     const roll = random();
     const variation = 0.9 + roll * 0.2;
     const fleetGross = fleetSales(next, roll);
-    const gross = Math.round(next.business.baselineRevenue * Math.min(3.5, Math.pow(next.business.capacity, 0.65)) * demand * variation) + fleetGross;
+    const gross = Math.round(next.business.baselineRevenue * Math.min(3.5 + next.business.premises.length * 2, Math.pow(next.business.capacity, 0.65)) * (1 + next.business.premises.length * 0.5) * demand * variation) + fleetGross;
     const wages = next.business.staff.reduce((sum, employee) => sum + Number(employee.wage || 0), 0);
     const supplies = Math.round(gross * (next.business.id === "buy-resell" ? 0.55 : 0.25));
     const overhead = 10 + next.business.premises.length * 25;

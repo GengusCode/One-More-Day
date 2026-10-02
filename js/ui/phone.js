@@ -2,7 +2,7 @@ import { canBuyBusinessVehicle, getVehicleInventory, getHome, HOME_OPTIONS } fro
 import {buildMoneyReport} from "./money-ledger.js";
 import { stokvelMonth } from "../systems/household.js";
 import { formatRand, ECONOMY } from "../data/economy.js";
-import { BUSINESS_UPGRADES, getStaffLimit } from "../systems/business.js";
+import { BUSINESS_UPGRADES, getStaffLimit, getExpansionOffer } from "../systems/business.js";
 import { getAvailableJobs } from "../systems/jobs.js";
 import { canFastForward } from "../systems/timeline.js";
 
@@ -122,6 +122,7 @@ function businessApp(state) {
     summary: "No active business",
     cards: [{ id: "business-none", icon: "🌱", title: "Build from the ground up", text: "Startup opportunities appear in Jobs.", badge: "Not started", actions: [] }, ...garageCards(state)],
   };
+  const expansion = getExpansionOffer(state);
   const upgrades = Object.entries(BUSINESS_UPGRADES)
     .filter(([id, item]) => item.businessId === state.business.id && !state.assets.ownedUpgradeIds.includes(id));
   return {
@@ -132,9 +133,11 @@ function businessApp(state) {
       badge: "Sales minus supplies, overhead and wages",
       actions: [
         ...upgrades.map(([id, item]) => action(id, "BUY_UPGRADE", `Buy ${item.name}`, formatRand(item.cost), state.finances.cash < item.cost)),
-        action("helper", "HIRE_EMPLOYEE", "Hire a helper", "R80 daily wage · Equipment expands staff slots", state.business.staff.length >= getStaffLimit(state)),
+        action("helper", "HIRE_EMPLOYEE", "Hire a helper", "R80 per operating day · Equipment and premises expand staff slots", state.business.staff.length >= getStaffLimit(state)),
       ],
-    }, ...garageCards(state)],
+    }, {id:'business-premises',icon:'🏢',title:'Commercial premises & branches',badge:`${state.business.premises.length}/2 sites`,
+      text: `${state.business.premises.length ? state.business.premises.map(site=>site.name || 'Commercial premises').join(' · ') + '. ' : ''}Each site unlocks three staff slots, expands sales capacity and adds R25 overhead per operating day. Staff wages and supplies still come out of sales. Growth does not guarantee profit.`,
+      actions: expansion.offer ? [action('next','EXPAND_BUSINESS',`Open ${expansion.offer.name}`,`${formatRand(expansion.offer.cost)} upfront · ${expansion.reason || '+3 staff slots · R25 extra operating overhead'}`,!expansion.ok)] : []}, ...garageCards(state)],
   };
 }
 
