@@ -323,9 +323,9 @@ async function dispatch(action, payload = {}) {
   }
   if (action === "HIRE_EMPLOYEE") {
     const result = hireEmployee(state, payload.id);
-    if (!result.ok) error = result.reason === "staff-limit" ? "Your business has reached its staff limit. Buy equipment or open premises to expand." : "You cannot hire that person right now.";
+    if (!result.ok) error = result.reason === "staff-limit" ? "Your business has reached its staff limit. Buy equipment or open premises to expand." : result.reason === "manager-unavailable" ? "A manager needs commercial premises, at least three staff and a free staff slot. Only one manager is allowed." : "You cannot hire that person right now.";
     else await commit(result.state);
-    render({announcement:result.ok?'Helper hired. Their wages are charged on operating days.':''});
+    render({announcement:result.ok?'Staff member hired. Their wages are charged on operating days.':''});
     return;
   }
   if (action === "BUY_ASSET") {

@@ -220,7 +220,11 @@ test("stay home has distinct employee, solo-owner and staffed-owner consequences
   staffed = hireEmployee(staffed, "helper").state;
   const staffedHome = resolveTravel(staffed, "stay-home", {});
   assert.equal(staffedHome.state.business.trust, 53);
-  assert.equal(staffedHome.state.finances.cash, 1_000 + Math.round(staffed.business.baselineRevenue * 0.35));
+  const receipt = staffedHome.state.finances.transactions.at(-1);
+  assert.equal(receipt.source, 'business-income');
+  assert.equal(staffedHome.state.finances.cash, 1000 + receipt.amount);
+  assert.ok(receipt.breakdown.some(row => row.label === 'Staff wages' && row.amount === -80));
+  assert.equal(receipt.breakdown.reduce((sum,row) => sum + row.amount,0),receipt.amount);
 });
 
 test("relationship effects clamp and derive useful labels", () => {

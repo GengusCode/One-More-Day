@@ -1,3 +1,4 @@
+import { settleBusinessDay } from "./business.js";
 import { getVehicleInventory, getHome } from "./vehicles.js";
 import { applyEffects, calculateNetWorth } from "../core/state.js";
 import { ECONOMY } from "../data/economy.js";
@@ -99,9 +100,7 @@ export function resolveTravel(state, optionId, context = {}) {
       const staffed = next.business.staff.length > 0;
       next.business.trust = clamp(next.business.trust + (staffed ? ECONOMY.stayHome.staffedTrust : ECONOMY.stayHome.soloTrust));
       if (staffed) {
-        next = applyEffects(next, {
-          cash: Math.round(next.business.baselineRevenue * ECONOMY.stayHome.staffedIncomeRate),
-        }, { source: "staffed-business-absence" }).state;
+        next = settleBusinessDay(next, {ownerAway:true,random:context.random || Math.random}).state;
       }
     }
     return { state: markTravel(next, optionId), status: { arrived: false, stayedHome: true } };

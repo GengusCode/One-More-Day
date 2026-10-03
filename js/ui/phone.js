@@ -2,7 +2,7 @@ import { canBuyBusinessVehicle, getVehicleInventory, getHome, HOME_OPTIONS } fro
 import {buildMoneyReport} from "./money-ledger.js";
 import { stokvelMonth } from "../systems/household.js";
 import { formatRand, ECONOMY } from "../data/economy.js";
-import { BUSINESS_UPGRADES, getStaffLimit, getExpansionOffer } from "../systems/business.js";
+import { BUSINESS_UPGRADES, getStaffLimit, getExpansionOffer, canHireManager } from "../systems/business.js";
 import { getAvailableJobs } from "../systems/jobs.js";
 import { canFastForward } from "../systems/timeline.js";
 
@@ -133,9 +133,12 @@ function businessApp(state) {
       badge: "Sales minus supplies, overhead and wages",
       actions: [
         ...upgrades.map(([id, item]) => action(id, "BUY_UPGRADE", `Buy ${item.name}`, formatRand(item.cost), state.finances.cash < item.cost)),
-        action("helper", "HIRE_EMPLOYEE", "Hire a helper", "R80 per operating day · Equipment and premises expand staff slots", state.business.staff.length >= getStaffLimit(state)),
+        action("helper", "HIRE_EMPLOYEE", "Hire a helper", "R80 per operating day · +1 capacity", state.business.staff.length >= getStaffLimit(state)),
+        action("specialist", "HIRE_EMPLOYEE", "Hire a skilled worker", "R150 per operating day · +2 capacity", state.business.staff.length >= getStaffLimit(state)),
+        action("manager", "HIRE_EMPLOYEE", "Hire a manager", "R180 per operating day · Requires premises and 3 staff · One manager maximum", !canHireManager(state)),
       ],
-    }, {id:'business-premises',icon:'🏢',title:'Commercial premises & branches',badge:`${state.business.premises.length}/2 sites`,
+    }, {id:'business-team',icon:'👥',title:'Your team',badge:`Payroll ${formatRand(state.business.staff.reduce((sum,employee)=>sum+Number(employee.wage||0),0))}/operating day`,
+      text: `${state.business.staff.length ? 'Wages are charged once per operating day, including days the team works while you stay home.' : 'No staff yet.'} A manager helps maintain more sales while you are away; profit is not guaranteed.`,team:state.business.staff,actions:[]}, {id:'business-premises' ,icon:'🏢',title:'Commercial premises & branches',badge:`${state.business.premises.length}/2 sites`,
       text: `${state.business.premises.length ? state.business.premises.map(site=>site.name || 'Commercial premises').join(' · ') + '. ' : ''}Each site unlocks three staff slots, expands sales capacity and adds R25 overhead per operating day. Staff wages and supplies still come out of sales. Growth does not guarantee profit.`,
       actions: expansion.offer ? [action('next','EXPAND_BUSINESS',`Open ${expansion.offer.name}`,`${formatRand(expansion.offer.cost)} upfront · ${expansion.reason || '+3 staff slots · R25 extra operating overhead'}`,!expansion.ok)] : []}, ...garageCards(state)],
   };
@@ -228,7 +231,7 @@ export function renderPhone(model, { open = false, activeApp = "home" } = {}) {
   if (!open) return "";
   const selected = model.apps.find((app) => app.id === activeApp);
   const content = selected
-    ? `<header class="phone-screen__header"><button type="button" data-action="OPEN_PHONE_APP" data-app="home" aria-label="Back to apps">‹</button><span>${safe(selected.icon)}</span><div><strong>${safe(selected.title)}</strong><small>${safe(selected.summary)}</small></div></header><div class="phone-cards">${selected.cards.map((card) => `<article class="phone-card" data-card-id="${safe(card.id)}"><div class="phone-card__top"><span>${safe(card.icon)}</span><small>${safe(card.badge)}</small></div><h3>${safe(card.title)}</h3><p>${safe(card.text)}</p>${card.art ? renderVehicleArt(card.art) : ""}${card.vehicles ? renderGarage(card.vehicles) : ""}${card.money ? renderMoneyHistory(card.money) : ""}${card.slots ? renderSlots(card.slots) : ""}${card.bet ? renderBetForm(card.bet) : ""}<div class="phone-card__actions">${card.actions.map(renderAction).join("")}</div></article>`).join("")}</div>`
+    ? `<header class="phone-screen__header"><button type="button" data-action="OPEN_PHONE_APP" data-app="home" aria-label="Back to apps">‹</button><span>${safe(selected.icon)}</span><div><strong>${safe(selected.title)}</strong><small>${safe(selected.summary)}</small></div></header><div class="phone-cards">${selected.cards.map((card) => `<article class="phone-card" data-card-id="${safe(card.id)}"><div class="phone-card__top"><span>${safe(card.icon)}</span><small>${safe(card.badge)}</small></div><h3>${safe(card.title)}</h3><p>${safe(card.text)}</p>${card.art ? renderVehicleArt(card.art) : ""}${card.vehicles ? renderGarage(card.vehicles) : ""}${card.money ? renderMoneyHistory(card.money) : ""}${card.team ? card.team.map((employee,index)=>`<div class="money-row" data-employee-id="${safe(employee.id)}"><span>${index+1}. ${safe(employee.name)}</span><strong>${formatRand(employee.wage)}/day</strong></div>`).join("") : ""}${card.slots ? renderSlots(card.slots) : ""}${card.bet ? renderBetForm(card.bet) : ""}<div class="phone-card__actions">${card.actions.map(renderAction).join("")}</div></article>`).join("")}</div>`
     : `<header class="phone-screen__header phone-screen__header--home"><div><strong>${safe(model.greeting || "Your phone")}</strong><small>${model.notifications.length ? safe(model.notifications[0].text) : "Everything you need, tucked away."}</small></div></header><div class="phone-app-grid">${model.apps.map((app) => `<button class="phone-app phone-app--${safe(app.colour)}" type="button" data-action="OPEN_PHONE_APP" data-app="${safe(app.id)}"><span class="phone-app__icon">${safe(app.icon)}</span><strong>${safe(app.title)}</strong><small>${safe(app.summary)}</small></button>`).join("")}</div>`;
   return `<div class="phone-overlay" role="dialog" aria-modal="true" aria-label="Phone"><button class="phone-overlay__backdrop" type="button" data-action="CLOSE_PHONE" aria-label="Close phone"></button><section class="phone-device"><div class="phone-device__speaker"></div><button class="phone-close" type="button" data-action="CLOSE_PHONE" aria-label="Close phone">×</button><div class="phone-screen">${content}</div><div class="phone-device__home" aria-hidden="true"></div></section></div>`;
 }

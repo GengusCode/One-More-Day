@@ -50,6 +50,7 @@ export function expandBusiness(state) {
 const EMPLOYEE_ROLES = Object.freeze({
   helper: { name: "Helper", capacity: 1, wage: 80 },
   specialist: { name: "Skilled worker", capacity: 2, wage: 150 },
+  manager: { name: "Manager", capacity: 0, wage: 180 },
 });
 
 export function startBusiness(state, businessId) {
@@ -105,9 +106,16 @@ export function getStaffLimit(state) {
   return base + equipment + Math.min(2, state.business.premises.length) * 3;
 }
 
+export function canHireManager(state) {
+  return state.business.active && !state.business.closed && !state.life.ended && state.life.stage !== 'school-finale'
+    && state.business.premises.length >= 1 && state.business.staff.length >= 3
+    && !state.business.staff.some(employee => employee.roleId === 'manager') && state.business.staff.length < getStaffLimit(state);
+}
+
 export function hireEmployee(state, roleId) {
   const role = EMPLOYEE_ROLES[roleId];
-  if (!role || !state.business.active) return { state, ok: false, reason: "unavailable" };
+  if (!role || !state.business.active || state.business.closed || state.life.ended || state.life.stage === "school-finale") return { state, ok: false, reason: "unavailable" };
+  if (roleId === 'manager' && !canHireManager(state)) return {state,ok:false,reason:'manager-unavailable'};
   if (state.business.staff.length >= getStaffLimit(state)) return { state, ok: false, reason: "staff-limit" };
   const next = clone(state);
   next.business.staff.push({
@@ -136,7 +144,7 @@ export function resolveOwnerChoice(state, eventId, choiceId, { random = Math.ran
   return { state: next, status: { valid: true, result: choice.result }, transactions: applied.transactions };
 }
 
-export function settleBusinessDay(state, { day = state.calendar.day, operating = true, random = Math.random } = {}) {
+export function settleBusinessDay(state, { day = state.calendar.day, operating = true, ownerAway = false, random = Math.random } = {}) {
   const settlementId = "business-day-" + day;
   if (state.dailyState.settledIds.includes(settlementId)) return { state, transactions: [], status: { duplicate: true } };
   let next = clone(state);
@@ -147,8 +155,9 @@ export function settleBusinessDay(state, { day = state.calendar.day, operating =
     const demand = 0.65 + next.business.trust / 100 * 0.7;
     const roll = random();
     const variation = 0.9 + roll * 0.2;
-    const fleetGross = fleetSales(next, roll);
-    const gross = Math.round(next.business.baselineRevenue * Math.min(3.5 + next.business.premises.length * 2, Math.pow(next.business.capacity, 0.65)) * (1 + next.business.premises.length * 0.5) * demand * variation) + fleetGross;
+    const coverage = ownerAway ? (next.business.staff.some(employee => employee.roleId === 'manager') ? .8 : .45) : 1;
+    const fleetGross = Math.round(fleetSales(next, roll) * coverage);
+    const gross = Math.round(next.business.baselineRevenue * Math.min(3.5 + next.business.premises.length * 2, Math.pow(next.business.capacity, 0.65)) * (1 + next.business.premises.length * 0.5) * demand * variation * coverage) + fleetGross;
     const wages = next.business.staff.reduce((sum, employee) => sum + Number(employee.wage || 0), 0);
     const supplies = Math.round(gross * (next.business.id === "buy-resell" ? 0.55 : 0.25));
     const overhead = 10 + next.business.premises.length * 25;
@@ -156,7 +165,7 @@ export function settleBusinessDay(state, { day = state.calendar.day, operating =
     if (fleet) fleet.salesTotal += fleetGross - Math.round(fleetGross * (next.business.id === "buy-resell" ? 0.55 : 0.25));
     const net = gross - supplies - overhead - wages;
     Object.assign(status, { gross, supplies, overhead, wages });
-    const settled = applyEffects(next, { cash: net, stats: { energy: -9 } }, { source: "business-income", label:'Business sales after costs', breakdown:[{label:'Customer sales',amount:gross},{label:'Supplies',amount:-supplies},{label:'Staff wages',amount:-wages},{label:'Business overhead',amount:-overhead}] });
+    const settled = applyEffects(next, { cash: net, stats: { energy: ownerAway ? 0 : -9 } }, { source: "business-income", label:ownerAway ? 'Business sales while you were away' : 'Business sales after costs', breakdown:[{label:'Customer sales',amount:gross},{label:'Supplies',amount:-supplies},{label:'Staff wages',amount:-wages},{label:'Business overhead',amount:-overhead}] });
     next = settled.state;
     transactions = settled.transactions;
     status.revenue = net;
