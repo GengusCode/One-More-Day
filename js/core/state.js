@@ -243,7 +243,6 @@ export function applyEffects(state, effects = {}, meta = {}) {
     }
     addLedgerTransaction(next.finances.dailyLedger,transaction);
     next.finances.transactions.push(transaction);
-    next.finances.transactions = next.finances.transactions.slice(-60);
     transactions.push(transaction);
   }
 
@@ -295,7 +294,7 @@ function normaliseTransactions(value) {
     if (!item || typeof item.id !== "string" || seen.has(item.id)) return false;
     seen.add(item.id);
     return Number.isFinite(Number(item.amount)) && Number.isFinite(Number(item.balance));
-  }).slice(-60).map((item) => ({
+  }).map((item) => ({
     id: item.id,
     amount: Math.round(Number(item.amount)),
     balance: Math.round(Number(item.balance)),
@@ -431,7 +430,7 @@ export function validateState(candidate) {
     && typeof source.dailyState.travelContext === "object"
     ? clone(source.dailyState.travelContext)
     : {};
-  const phoneApps = new Set(["home", "jobs", "transport", "business", "people", "life", "time", "betway"]);
+  const phoneApps = new Set(["home", "jobs", "bank", "transport", "business", "people", "life", "time", "betway"]);
   state.settings.phone = {
     open: Boolean(source.settings?.phone?.open),
     app: phoneApps.has(source.settings?.phone?.app) ? source.settings.phone.app : "home",

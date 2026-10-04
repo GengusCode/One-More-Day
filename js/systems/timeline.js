@@ -34,6 +34,7 @@ export function fastForward(state, days, { random = Math.random } = {}) {
 
   let next = clone(state);
   const startingCash = next.finances.cash;
+  const before = {age:state.calendar.age,cash:startingCash,stats:clone(state.stats)};
   const driverMode = next.transport.dailyAssignment?.mode === "driver";
   let daysAdvanced = 0;
   let interruptionReason = "";
@@ -61,5 +62,6 @@ export function fastForward(state, days, { random = Math.random } = {}) {
     reason: interruptionReason,
   });
   next.timeline.lastSummary = summary;
+  Object.assign(summary,{before,after:{age:next.calendar.age,cash:next.finances.cash,stats:clone(next.stats)},endDay:next.calendar.day});
   return { state: next, summary, interrupted: Boolean(interruptionReason) };
 }

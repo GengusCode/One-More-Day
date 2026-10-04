@@ -7,6 +7,36 @@ import {buildMoneyReport} from './money-ledger.js';
 import {patchChildren} from './dom-patch.js';
 
 const GENDER_IDS = new Set(["man", "woman", "non-binary"]);
+const STAT_ICONS = {energy:'⚡',health:'❤️',happiness:'☀️',knowledge:'🧠',social:'💬',reputation:'⭐',luck:'🍀'};
+
+export function showStatChanges(root, previous, current) {
+  if (!previous || !root.ownerDocument?.createElement) return;
+  for (const key of Object.keys(STAT_ICONS)) {
+    const delta = Number(current[key])-Number(previous[key]);
+    const target = root.querySelector(`[data-stat-feedback="${key}"]`);
+    if (!target || !Number.isFinite(delta) || !delta) continue;
+    const popup = root.ownerDocument.createElement('span');
+    popup.className = `stat-change ${delta>0?'stat-change--gain':'stat-change--loss'}`;
+    popup.textContent = `${delta>0?'+':''}${delta}`;
+    target.appendChild(popup);
+    const reduced = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    const animation = popup.animate?.(reduced ? [{opacity:1},{opacity:0}] : [
+      {opacity:0,transform:'translateY(-16px) scale(1.3)'},
+      {opacity:1,transform:'translateY(-12px) scale(1.15)',offset:.25},
+      {opacity:0,transform:'translateY(0) scale(.45)'}
+    ],{duration:reduced?700:1400,easing:'ease-out'});
+    if(animation) animation.onfinish=()=>popup.remove();
+    else setTimeout(()=>popup.remove(),1400);
+  }
+}
+
+function skipSummaryMarkup(state) {
+  const summary=state.timeline.lastSummary;
+  if(!summary?.before || summary.endDay!==state.calendar.day) return '';
+  const rows=[['Age',summary.before.age,summary.after.age],['Cash',formatRand(summary.before.cash),formatRand(summary.after.cash)],
+    ...Object.keys(STAT_ICONS).filter(key=>summary.before.stats[key]!==summary.after.stats[key]).map(key=>[key.toUpperCase(),`${summary.before.stats[key]}%`,`${summary.after.stats[key]}%`])];
+  return `<section class="skip-summary" aria-label="Time passed"><h3>⏩ ${summary.daysAdvanced} days passed</h3><p>Work, bills and daily life continued.${summary.reason?' Stopped for: '+escapeText(summary.reason.replaceAll('-',' '))+'.':''}</p>${rows.map(([label,before,after])=>`<div class="money-row"><span>${escapeText(label)}</span><strong>${escapeText(before)} → ${escapeText(after)}</strong></div>`).join('')}</section>`;
+}
 
 export function escapeText(value) {
   return String(value ?? "")
@@ -180,7 +210,7 @@ function eventMarkup(event) {
       <h2 id="today-title">${escapeText(safeEvent.title)}</h2>
       <p class="event-card__text">${escapeText(safeEvent.text)}</p>
       ${safeEvent.timerSeconds !== undefined ? `<div class="exam-timer" role="timer" aria-label="Time left for this question"><span>TIME LEFT</span><strong data-exam-clock>${safeEvent.timerSeconds}s</strong></div>` : ""}
-      ${safeEvent.result ? `<div class="result" aria-live="polite">${escapeText(safeEvent.result)}</div>` : ""}
+      ${safeEvent.result ? `<div class="result" aria-live="polite"><strong class="section-label">PREVIOUS CHOICE & OUTCOME</strong>${escapeText(safeEvent.result)}</div>` : ""}
       <div class="decision-grid">${choices}</div>
     </article>`;
 }
@@ -214,12 +244,12 @@ function gameMarkup(state, context) {
       <section class="hud" aria-label="Current life">
         <div><span>DAY</span><strong>${view.hud.day}</strong></div><div><span>AGE</span><strong>${view.hud.age}</strong></div>
         <div class="hud__money"><span>CASH</span><strong id="cashBalance">${view.hud.cash}</strong><div id="moneyFeedback" class="money-feedback" aria-live="polite"></div></div>
-        <div><span>ENERGY</span><strong>${view.hud.energy}</strong></div>
       </section>
       <section class="personal-stats" aria-label="Personal stats">
-        ${["health", "happiness", "knowledge", "social", "reputation", "luck"].map((key) => `<div class="stat-tile stat-tile--${key}"><span>${key.toUpperCase()}</span><strong>${view.hud[key]}<small>/100</small></strong><div class="stat-meter" aria-hidden="true"><i style="width:${Math.max(0, Math.min(100, Number(view.hud[key]) || 0))}%"></i></div></div>`).join("")}
+        ${Object.keys(STAT_ICONS).map((key) => `<div class="stat-tile stat-tile--${key}" data-stat="${key}"><span class="stat-icon" aria-hidden="true">${STAT_ICONS[key]}</span><span class="stat-name">${key.toUpperCase()}</span><div class="stat-meter" aria-hidden="true"><i style="width:${Math.max(0, Math.min(100, Number(view.hud[key]) || 0))}%"></i></div><strong class="stat-value">${view.hud[key]}%<span class="stat-feedback" id="statFeedback-${key}" data-stat-feedback="${key}"></span></strong></div>`).join("")}
       </section>
       <main class="play-column">${!state.life.ended && state.dailyState.dayPlan ? `<section class="day-plan" aria-label="Morning plan"><span>☀ MORNING</span><p>${escapeText(state.dailyState.dayPlan.morning)}</p>${canStayHomeToday(state) ? `<button class="stay-home-action" type="button" data-action="STAY_HOME_TODAY">Stay home today <small>${state.career.active ? "No shift pay · Attendance matters" : "Less business capacity today"}</small></button>` : ''}</section>` : ''}${(state.dailyState.updates || []).length ? `<section class="life-news" aria-label="Today’s news">${state.dailyState.updates.slice(0,3).map(text=>`<p>${escapeText(text)}</p>`).join("")}</section>` : ""}${state.life.ended ? endingMarkup(state.life.endingSummary) : eventMarkup(context.event)}
+        ${skipSummaryMarkup(state)}
         ${state.life.stage==='school-finale' || state.life.ended ? '' : moneyReportMarkup(state)}
         ${state.life.ended ? "" : `<button class="button button--primary button--wide next-day" type="button" data-action="NEXT_DAY" ${context.canAdvance ? "" : "disabled"}>${escapeText(context.nextLabel || "FINISH TODAY FIRST")}</button>
         <button class="phone-launch" type="button" data-action="OPEN_PHONE" aria-haspopup="dialog"><span aria-hidden="true">📱</span><strong>PHONE</strong><small>${phoneModel.notifications.length ? escapeText(phoneModel.notifications[0].text) : "Apps, people & plans"}</small></button>`}
@@ -240,6 +270,7 @@ export function createRenderer({ root, dispatch }) {
   let draft = { name: "", gender: "" };
   let currentContext = {};
   let destroyed = false;
+  let previousStats = null;
   const updateSetupValidity = (showErrors = false) => {
     const form = root.querySelector("#newLifeForm");
     if (!form) return;
@@ -277,6 +308,7 @@ export function createRenderer({ root, dispatch }) {
       if (destroyed) return;
       currentContext = context;
       if (context.screen === "setup") {
+        previousStats = null;
         draft = { name: context.draftName || "", gender: context.draftGender || "" };
         root.innerHTML = setupMarkup(
           buildSetupModel({ ...draft, hasSave: context.hasSave }),
@@ -288,6 +320,8 @@ export function createRenderer({ root, dispatch }) {
           const template=root.ownerDocument.createElement('div');template.innerHTML=markup;
           patchChildren(root,template);
         } else root.innerHTML=markup;
+        showStatChanges(root,previousStats,state.stats);
+        previousStats={...state.stats};
       }
       if (context.focusTarget) root.querySelector?.(context.focusTarget)?.focus?.({ preventScroll: true });
     },

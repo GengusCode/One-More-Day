@@ -56,7 +56,7 @@ test("secondary systems stay in phone apps", () => {
   const model = buildPhoneModel(state);
   assert.deepEqual(
     model.apps.map(({ id }) => id),
-    ["jobs", "transport", "business", "people", "life", "time", "betway"],
+    ["jobs", "bank", "transport", "business", "people", "life", "time", "betway"],
   );
 });
 

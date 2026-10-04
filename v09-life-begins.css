@@ -194,6 +194,17 @@ body{
 
 /* Short daily context: no extra interaction between morning and evening. */
 .stat-tile--luck{--stat-colour:#ad6518;--stat-bg:#ffecd3}
+.stat-tile--energy{--stat-colour:#996309;--stat-bg:#fff0c2}
+/* Compact stacked meters leave the situation and choices room on phones. */
+.personal-stats{display:flex;flex-direction:column;gap:3px;margin:0 0 16px;padding:8px 10px;background:#fffdf7;border:1px solid #d0dcd1;border-radius:14px}
+.personal-stats .stat-tile{display:grid;grid-template-columns:22px 94px minmax(24px,1fr) 46px;align-items:center;gap:7px;padding:4px 0;border:0;border-radius:0;background:transparent;text-align:left;min-height:26px}
+.personal-stats .stat-icon{font-size:.9rem;line-height:1}.personal-stats .stat-name{font-size:.64rem;letter-spacing:.025em;color:#415249}.personal-stats .stat-value{position:relative;margin:0;text-align:right;font-size:.8rem;font-variant-numeric:tabular-nums;color:var(--stat-colour)}
+.personal-stats .stat-meter{height:7px;margin:0;background:var(--stat-bg)}.stat-meter i{transition:width .35s ease}
+.stat-feedback{position:absolute;inset:0;pointer-events:none}.stat-change{position:absolute;right:0;top:0;font-size:1rem;font-weight:900;text-shadow:0 1px 2px #fff;background:#fffdf7;border-radius:4px;padding:0 3px;white-space:nowrap}.stat-change--gain{color:#08713b}.stat-change--loss{color:#b72d39}
+.hud{grid-template-columns:1fr 1fr 2fr}.event-card{border:2px solid #598575;box-shadow:0 5px 0 #cfdfd1}.event-card__top{padding-bottom:10px;border-bottom:1px solid #cbdace}.event-card__top p{color:#205342;font-weight:900;letter-spacing:.08em}.event-card__text{color:#243a2f;font-size:1rem;line-height:1.65;background:#f0f5ee;border-left:4px solid #6b957a;border-radius:7px;padding:12px}
+.result{background:#fff0c6;border:1px solid #d5a94e;border-left:5px solid #bd8319;padding:14px;color:#4b3514;line-height:1.6}.section-label{display:block;margin-bottom:7px;font-size:.7rem;letter-spacing:.07em;color:#795314}.day-plan{border-left:5px solid #d8a62d;background:#fff8df}.life-news{padding:12px 15px;border:1px solid #76a5a0;border-left:5px solid #327873;background:#e8f4f0;border-radius:12px;margin-bottom:14px}.life-news::before{content:'FOLLOW-UPS & NEWS';display:block;font-size:.7rem;font-weight:900;letter-spacing:.07em;color:#265d58}.skip-summary{padding:15px;margin:16px 0;background:#e9efff;border:1px solid #899dce;border-left:5px solid #536cb0;border-radius:14px}.skip-summary h3{margin:0 0 8px;font-size:1rem}.skip-summary p{font-size:.85rem;line-height:1.5;color:#354b70}.money-report{border-left:5px solid #3d855d}.phone-card{border:1px solid #adbcaf}.phone-card h3{color:#163d2b}.phone-card__top small{font-weight:800}
+@media(prefers-reduced-motion:reduce){.stat-meter i{transition:none}}
+.personal-stats .stat-change--gain{color:#08713b}.personal-stats .stat-change--loss{color:#b72d39}
 .day-plan{padding:12px 15px;margin-bottom:12px;border-radius:14px;border:1px solid #d9e5da;background:#f1f7ef}
 .day-plan span{font-size:.75rem;letter-spacing:.06em;font-weight:800;color:#496740}
 .day-plan p{margin:5px 0 0;font-size:.9rem;line-height:1.45;color:#344b38}

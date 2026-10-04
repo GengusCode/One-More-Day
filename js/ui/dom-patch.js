@@ -8,7 +8,7 @@ export function patchNode(current,next) {
   if(current.nodeType!==1) {if(current.nodeValue!==next.nodeValue) current.nodeValue=next.nodeValue;return;}
   for(const {name} of Array.from(current.attributes)) if(next.getAttribute(name)===null && !(current.nodeName==='DETAILS' && name==='open')) current.removeAttribute(name);
   for(const {name,value} of Array.from(next.attributes)) if(current.getAttribute(name)!==value) current.setAttribute(name,value);
-  if(current.getAttribute('id')==='moneyFeedback') return;
+  if(current.getAttribute('id')==='moneyFeedback' || current.getAttribute('id')?.startsWith('statFeedback-')) return;
   patchChildren(current,next);
 }
 

@@ -6,9 +6,10 @@ import { BUSINESS_UPGRADES, getStaffLimit, getExpansionOffer, canHireManager } f
 import { getAvailableJobs } from "../systems/jobs.js";
 import { canFastForward } from "../systems/timeline.js";
 
-const APP_ORDER = Object.freeze(["jobs", "transport", "business", "people", "life", "time", "betway"]);
+const APP_ORDER = Object.freeze(["jobs", "bank", "transport", "business", "people", "life", "time", "betway"]);
 
 const APP_META = Object.freeze({
+  bank: { title: "Bank", icon: "🏦", colour: "blue" },
   betway: { title: "Betway", icon: "🎰", colour: "green" },
   jobs: { title: "Jobs", icon: "💼", colour: "sun" },
   transport: { title: "Transport", icon: "🚕", colour: "blue" },
@@ -174,6 +175,15 @@ function lifeApp(state) {
   };
 }
 
+function bankApp(state) {
+  const money = buildMoneyReport(state,{recent:true});
+  return {summary: `Balance ${formatRand(state.finances.cash)}`, cards:[
+    {id:'bank-balance',icon:'🏦',title:'Current balance',badge:formatRand(state.finances.cash),text:state.finances.cash<0?'Your negative balance is money you owe.':'Available game money. Income and expenses below show all recorded movements.',actions:[]},
+    {id:'bank-income',icon:'↗️',title:'Income',badge:formatRand(money.moneyIn),text:'Recorded earnings and payments received, newest first.',money:{...money,rows:money.rows.filter(row=>row.amount>0)},actions:[]},
+    {id:'bank-expenses',icon:'↘️',title:'Expenses',badge:formatRand(money.moneyOut),text:'Recorded spending and running costs, newest first. Older saves may have already discarded earlier entries.',money:{...money,rows:money.rows.filter(row=>row.amount<0)},actions:[]},
+  ]};
+}
+
 function timeApp(state) {
   const week = canFastForward(state, 7);
   const month = canFastForward(state, 30);
@@ -183,7 +193,7 @@ function timeApp(state) {
   return {
     summary: "Move ahead without losing the story",
     cards: [{
-      id: "time", icon: "🗓️", title: "How far ahead?", text: "Routine days settle automatically. Big moments interrupt the skip.", badge: blocked ? "Unavailable" : "Ready",
+      id: "time", icon: "🗓️", title: "How far ahead?", text: "Time keeps moving: work earns money, bills are paid and wellbeing changes each day. Birthdays increase your age. Big moments interrupt the skip; a summary shows what changed.", badge: blocked ? "Unavailable" : "Ready",
       actions: [action("week", "FAST_FORWARD", "One week", detail, !week.ok), action("month", "FAST_FORWARD", "One month", month.ok ? "Stops for important moments" : month.reason, !month.ok), action("year", "FAST_FORWARD", "Age one year", "Stops for important moments", !year.ok)],
     }],
   };
@@ -202,7 +212,7 @@ function betwayApp(state, { slotsSpinning = false } = {}) {
 }
 
 function renderMoneyHistory(report) {
-  return report.rows.slice(-30).reverse().map(row=>`<div class="money-row"><span>Day ${row.day} · ${safe(row.label)}</span><strong class="${row.amount>0?'money-in':'money-out'}">${row.amount>0?'+':'−'}${formatRand(Math.abs(row.amount))}</strong></div>`).join('') || '<p>No payments or earnings recorded yet.</p>';
+  return report.rows.slice().reverse().map(row=>`<div class="money-row"><span>Day ${row.day} · ${safe(row.label)}</span><strong class="${row.amount>0?'money-in':'money-out'}">${row.amount>0?'+':'−'}${formatRand(Math.abs(row.amount))}</strong></div>`).join('') || '<p>No payments or earnings recorded yet.</p>';
 }
 
 function renderBetForm(bet) {
@@ -214,7 +224,7 @@ function renderSlots(slots) {
 }
 
 export function buildPhoneModel(state, options = {}) {
-  const builders = { jobs: jobsApp, transport: transportApp, business: businessApp, people: peopleApp, life: lifeApp, time: timeApp, betway: betwayApp };
+  const builders = { jobs: jobsApp, bank: bankApp, transport: transportApp, business: businessApp, people: peopleApp, life: lifeApp, time: timeApp, betway: betwayApp };
   const apps = APP_ORDER.map((id) => ({ id, ...APP_META[id], ...builders[id](state, options) }));
   const notifications = (state.dailyState.updates || []).map(text => ({ app: "life", text }));
   if (state.stokvel.lastPayout) notifications.push({ app: "life", text: `Last stokvel payout: ${formatRand(state.stokvel.lastPayout.amount)} on day ${state.stokvel.lastPayout.day}` });
