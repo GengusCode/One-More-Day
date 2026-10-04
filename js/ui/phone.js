@@ -189,12 +189,12 @@ function timeApp(state) {
   const month = canFastForward(state, 30);
   const year = canFastForward(state, 365);
   const blocked = !week.ok;
-  const detail = blocked ? week.reason : "Stops for important moments";
+  const detail = blocked ? week.reason : "Automatically handles decisions";
   return {
     summary: "Move ahead without losing the story",
     cards: [{
-      id: "time", icon: "🗓️", title: "How far ahead?", text: "Routine work choices are handled automatically, with a log of what was chosen. Your selected vehicle is used when available. Wages, bills and wellbeing continue each day. Purchases, commitments, birthdays and serious events pause the skip for your attention.", badge: blocked ? "Unavailable" : "Ready",
-      actions: [action("week", "FAST_FORWARD", "One week", detail, !week.ok), action("month", "FAST_FORWARD", "One month", month.ok ? "Stops for important moments" : month.reason, !month.ok), action("year", "FAST_FORWARD", "Age one year", "Stops for important moments", !year.ok)],
+      id: "time", icon: "🗓️", title: "How far ahead?", text: "Skip the full period. Decisions are handled automatically, including purchases and commitments. The game favours affordable, lower-risk choices and records what it chose. Promotions, birthdays and follow-ups appear in the final report. A life ending is the only normal event that ends a skip early.", badge: blocked ? "Unavailable" : "Ready",
+      actions: [action("week", "FAST_FORWARD", "One week", detail, !week.ok), action("month", "FAST_FORWARD", "One month", month.ok ? detail : month.reason, !month.ok), action("year", "FAST_FORWARD", "Skip one year", year.ok ? detail : year.reason, !year.ok)],
     }],
   };
 }

@@ -36,7 +36,9 @@ function skipSummaryMarkup(state) {
   const rows=[['Age',summary.before.age,summary.after.age],['Cash',formatRand(summary.before.cash),formatRand(summary.after.cash)],
     ...Object.keys(STAT_ICONS).filter(key=>summary.before.stats[key]!==summary.after.stats[key]).map(key=>[key.toUpperCase(),`${summary.before.stats[key]}%`,`${summary.after.stats[key]}%`])];
   const automatic=summary.automaticChoices || [];
-  return `<section class="skip-summary" aria-label="Time passed"><h3>⏩ ${summary.daysAdvanced} of ${summary.requestedDays} days passed</h3><p>Work, bills and daily life continued.${summary.reason?' Paused for: '+escapeText(summary.reason.replaceAll('-',' '))+'. '+Number(summary.remainingDays || 0)+' days remain in the requested period.':''}</p>${rows.map(([label,before,after])=>`<div class="money-row"><span>${escapeText(label)}</span><strong>${escapeText(before)} → ${escapeText(after)}</strong></div>`).join('')}${automatic.length?`<details class="skip-choices"><summary>${automatic.length} routine choices handled automatically</summary>${automatic.map(row=>`<article><strong>Day ${row.day} · ${escapeText(row.title)}</strong><p>Chose: ${escapeText(row.choice)}</p><p>${escapeText(row.result)}</p></article>`).join('')}</details>`:''}</section>`;
+  const milestones=summary.milestones || [];
+  const label=summary.stoppedEarly ? `${summary.daysAdvanced} days passed` : summary.requestedDays===365 ? "One year later" : summary.requestedDays===30 ? "One month later" : "One week later";
+  return `<section class="skip-summary" aria-label="Time passed"><h3>⏩ ${label}</h3><p>Decisions were handled automatically while work, bills and daily life continued.${summary.reason?' Paused for: '+escapeText(summary.reason.replaceAll('-',' '))+'. '+Number(summary.remainingDays || 0)+' days remain in the requested period.':''}</p>${rows.map(([label,before,after])=>`<div class="money-row"><span>${escapeText(label)}</span><strong>${escapeText(before)} → ${escapeText(after)}</strong></div>`).join('')}${milestones.length?`<details class="skip-choices"><summary>${milestones.length} milestones & follow-ups</summary>${milestones.map(row=>`<article><strong>Day ${row.day} · ${escapeText(row.reason.replaceAll('-',' '))}</strong><p>${escapeText(row.text)}</p></article>`).join('')}</details>`:''}${automatic.length?`<details class="skip-choices"><summary>${automatic.length} routine choices handled automatically</summary>${automatic.map(row=>`<article><strong>Day ${row.day} · ${escapeText(row.title)}</strong><p>Chose: ${escapeText(row.choice)}</p><p>${escapeText(row.result)}</p></article>`).join('')}</details>`:''}</section>`;
 }
 
 export function escapeText(value) {
@@ -211,7 +213,7 @@ function eventMarkup(event) {
       <h2 id="today-title">${escapeText(safeEvent.title)}</h2>
       <p class="event-card__text">${escapeText(safeEvent.text)}</p>
       ${safeEvent.timerSeconds !== undefined ? `<div class="exam-timer" role="timer" aria-label="Time left for this question"><span>TIME LEFT</span><strong data-exam-clock>${safeEvent.timerSeconds}s</strong></div>` : ""}
-      ${safeEvent.result ? `<div class="result" aria-live="polite"><strong class="section-label">PREVIOUS CHOICE & OUTCOME</strong>${escapeText(safeEvent.result)}</div>` : ""}
+      ${safeEvent.result && safeEvent.result!==safeEvent.text ? `<div class="result" aria-live="polite"><strong class="section-label">PREVIOUS CHOICE & OUTCOME</strong>${escapeText(safeEvent.result)}</div>` : ""}
       <div class="decision-grid">${choices}</div>
     </article>`;
 }
@@ -238,6 +240,8 @@ function gameMarkup(state, context) {
   const phoneModel = buildPhoneModel(state, { slotsSpinning: context.slotsSpinning });
   const phoneOpen = context.phoneOpen ?? state.settings.phone?.open ?? false;
   const phoneApp = context.phoneApp ?? state.settings.phone?.app ?? "home";
+  const phoneNotice=phoneModel.notifications.find(item=>item.text!==context.event?.text && item.text!==context.event?.result);
+  const visibleUpdates=(state.dailyState.updates || []).filter(text=>text!==context.event?.text && text!==context.event?.result);
   return `
     <div class="game-shell">
       <header class="game-header"><div><p class="eyebrow">ONE MORE DAY · SA EDITION</p><p class="welcome">Sharp, ${escapeText(view.playerName)}.</p></div>
@@ -249,11 +253,11 @@ function gameMarkup(state, context) {
       <section class="personal-stats" aria-label="Personal stats">
         ${Object.keys(STAT_ICONS).map((key) => `<div class="stat-tile stat-tile--${key}" data-stat="${key}"><span class="stat-icon" aria-hidden="true">${STAT_ICONS[key]}</span><span class="stat-name">${key.toUpperCase()}</span><div class="stat-meter" aria-hidden="true"><i style="width:${Math.max(0, Math.min(100, Number(view.hud[key]) || 0))}%"></i></div><strong class="stat-value">${view.hud[key]}%<span class="stat-feedback" id="statFeedback-${key}" data-stat-feedback="${key}"></span></strong></div>`).join("")}
       </section>
-      <main class="play-column">${!state.life.ended && state.dailyState.dayPlan ? `<section class="day-plan" aria-label="Morning plan"><span>☀ MORNING</span><p>${escapeText(state.dailyState.dayPlan.morning)}</p>${canStayHomeToday(state) ? `<button class="stay-home-action" type="button" data-action="STAY_HOME_TODAY">Stay home today <small>${state.career.active ? "No shift pay · Attendance matters" : "Less business capacity today"}</small></button>` : ''}</section>` : ''}${(state.dailyState.updates || []).length ? `<section class="life-news" aria-label="Today’s news">${state.dailyState.updates.slice(0,3).map(text=>`<p>${escapeText(text)}</p>`).join("")}</section>` : ""}${state.life.ended ? endingMarkup(state.life.endingSummary) : eventMarkup(context.event)}
+      <main class="play-column">${!state.life.ended && state.dailyState.dayPlan ? `<section class="day-plan" aria-label="Morning plan"><span>☀ MORNING</span><p>${escapeText(state.dailyState.dayPlan.morning)}</p>${canStayHomeToday(state) ? `<button class="stay-home-action" type="button" data-action="STAY_HOME_TODAY">Stay home today <small>${state.career.active ? "No shift pay · Attendance matters" : "Less business capacity today"}</small></button>` : ''}</section>` : ''}${visibleUpdates.length ? `<section class="life-news" aria-label="Today’s news">${visibleUpdates.slice(0,3).map(text=>`<p>${escapeText(text)}</p>`).join("")}</section>` : ""}${state.life.ended ? endingMarkup(state.life.endingSummary) : eventMarkup(context.event)}
         ${skipSummaryMarkup(state)}
         ${state.life.stage==='school-finale' || state.life.ended ? '' : moneyReportMarkup(state)}
         ${state.life.ended ? "" : `<button class="button button--primary button--wide next-day" type="button" data-action="NEXT_DAY" ${context.canAdvance ? "" : "disabled"}>${escapeText(context.nextLabel || "FINISH TODAY FIRST")}</button>
-        <button class="phone-launch" type="button" data-action="OPEN_PHONE" aria-haspopup="dialog"><span aria-hidden="true">📱</span><strong>PHONE</strong><small>${phoneModel.notifications.length ? escapeText(phoneModel.notifications[0].text) : "Apps, people & plans"}</small></button>`}
+        <button class="phone-launch" type="button" data-action="OPEN_PHONE" aria-haspopup="dialog"><span aria-hidden="true">📱</span><strong>PHONE</strong><small>${phoneNotice ? escapeText(phoneNotice.text) : "Apps, people & plans"}</small></button>`}
       </main>
       ${state.life.ended ? "" : renderPhone({ ...phoneModel, greeting: `Sharp, ${view.playerName}` }, { open: phoneOpen, activeApp: phoneApp })}
       <p class="app-error" role="alert">${escapeText(context.error || "")}</p>

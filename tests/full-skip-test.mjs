@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import {createDefaultState} from '../js/core/state.js';
+import {startCareer} from '../js/systems/career.js';
+import {fastForward} from '../js/systems/timeline.js';
+import {createRenderer} from '../js/ui/render.js';
+const s=startCareer(createDefaultState(),'office');s.finances.cash=100000;s.dailyState.phase='complete';s.dailyState.complete=true;
+s.delayedEvents.push({dueDay:3,eventId:'family-check-in',outcomeId:'check-3',severity:4,payload:{highImpact:true,result:'A family follow-up arrives.'}});
+const year=fastForward(s,365,{random:()=>.5});
+assert.equal(year.summary.daysAdvanced,365);assert.equal(year.state.calendar.day,s.calendar.day+365);
+assert.equal(year.state.calendar.age,s.calendar.age+1);assert.equal(year.interrupted,false);
+assert.equal(year.state.dailyState.complete,true);assert.equal(year.summary.remainingDays,0);
+assert.ok(year.summary.milestones.some(row=>row.reason==='birthday'));
+assert.equal(new Set(year.state.finances.transactions.map(tx=>tx.id)).size,year.state.finances.transactions.length);
+const root={innerHTML:'',addEventListener(){},removeEventListener(){},querySelector(){return null;}};
+s.dailyState.updates=['The same outcome.'];
+createRenderer({root,dispatch(){}}).render(s,{event:{title:'Outcome',text:'The same outcome.',result:'The same outcome.',choices:[]}});
+assert.equal(root.innerHTML.split('The same outcome.').length-1,1,'the outcome appears once');
+console.log('full skip: 365 days, aging, milestones, settlements and deduplicated outcome passed');

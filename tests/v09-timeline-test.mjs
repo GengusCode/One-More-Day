@@ -36,8 +36,9 @@ assert.equal(month.state.timeline.settledDayIds.length, 30);
 const birthdayStart = completeAdult("Palesa");
 birthdayStart.life.ageDays = 364;
 const birthdayStop = fastForward(birthdayStart, 7, { random: () => 0.5 });
-assert.equal(birthdayStop.interrupted, true);
-assert.equal(birthdayStop.summary.reason, "birthday");
+assert.equal(birthdayStop.interrupted, false);
+assert.equal(birthdayStop.summary.daysAdvanced, 7);
+assert.ok(birthdayStop.summary.milestones.some(row=>row.reason==="birthday"));
 assert.equal(birthdayStop.state.calendar.age, 19);
 
 const interruptedState = completeAdult("Ayesha");
@@ -49,9 +50,9 @@ interruptedState.delayedEvents.push({
   payload: { highImpact: true, result: "Your family needs an answer." },
 });
 const important = fastForward(interruptedState, 7, { random: () => 0.5 });
-assert.equal(important.interrupted, true);
-assert.equal(important.summary.daysAdvanced, 1);
-assert.equal(important.summary.reason, "important-event");
+assert.equal(important.interrupted, false);
+assert.equal(important.summary.daysAdvanced, 7);
+assert.ok(important.summary.milestones.some(row=>row.reason==="important-event"));
 
 let graduate = createNewLife({ name: "Karabo", gender: "non-binary" });
 graduate.life.school.step = "last-morning";
@@ -67,8 +68,9 @@ pending.state.delayedEvents.push({
   payload: { highImpact: true, result: "A family issue also needs attention." },
 });
 const jobResult = fastForward(pending.state, 7, { random: () => 0.5 });
-assert.equal(jobResult.interrupted, true);
-assert.equal(jobResult.summary.reason, "important-event");
+assert.equal(jobResult.interrupted, false);
+assert.equal(jobResult.summary.daysAdvanced, 7);
+assert.ok(jobResult.summary.milestones.some(row=>row.reason==="important-event"));
 assert.equal(jobResult.state.career.active, true);
 
 const driver = completeAdult("Nadia");
