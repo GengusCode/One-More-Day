@@ -56,6 +56,30 @@ export const STORY_EVENTS = [
 ];
 
 export const STORY_WORK_DECISIONS = [
+  {id:'career-handover',path:'career',topic:'planning',title:'The next shift needs a clear handover',choices:[
+    choice('write-handover','Leave a short checklist with priorities','The next person starts with a clear plan.',{stats:{energy:-3},career:{coworkers:3,readiness:2}}),
+    choice('talk-handover','Walk through the unfinished tasks together','A quick conversation catches a misunderstanding.',{stats:{energy:-4,social:2},career:{coworkers:4}}),
+  ]},
+  {id:'career-version-mixup',path:'career',topic:'quality',title:'Two versions of the same file are circulating',choices:[
+    choice('label-version','Confirm the latest version and label it clearly','The team stops working from outdated numbers.',{stats:{knowledge:3,energy:-3},career:{performance:3}}),
+    choice('compare-changes','Compare the changes with the author','You understand why the numbers changed before sharing them.',{stats:{knowledge:4,energy:-5},career:{coworkers:2}}),
+  ]},
+  {id:'career-meeting-agenda',path:'career',topic:'planning',title:'A meeting has no agenda and a full invite list',choices:[
+    choice('ask-agenda','Ask what needs deciding before the meeting','A clearer agenda makes the discussion useful.',{stats:{knowledge:2},career:{readiness:3}}),
+    choice('send-update','Send a written update on your part','Your colleagues get the facts without another long call.',{stats:{energy:3},career:{performance:2}}),
+  ]},
+  {id:'career-customer-question',path:'career',topic:'service',title:'A customer asks something outside your expertise',choices:[
+    choice('find-expert','Find the right person and introduce them','The customer gets a reliable answer rather than a guess.',{stats:{energy:-3,social:2},career:{performance:3}}),
+    choice('check-answer','Check the information and call back','You learn the answer and keep the promise to call.',{stats:{knowledge:3,energy:-4},career:{readiness:2}}),
+  ]},
+  {id:'career-practical-demo',path:'career',topic:'learning',title:'A colleague demonstrates a tool you rarely use',choices:[
+    choice('try-example','Try a small example while they explain','Practice makes the unfamiliar tool less intimidating.',{stats:{knowledge:4,energy:-3},career:{readiness:2}}),
+    choice('save-notes','Write down the steps for your next task','You leave with useful notes and finish your current work.',{stats:{knowledge:2},career:{performance:2}}),
+  ]},
+  {id:'career-shared-space',path:'career',topic:'teamwork',title:'Shared supplies are getting difficult to find',choices:[
+    choice('organise-supplies','Label the shelves and tidy your section','Everyone wastes less time looking for basic supplies.',{stats:{energy:-4},career:{coworkers:3,readiness:2}}),
+    choice('agree-system','Agree on a simple system with the team','The people using the supplies help decide where they belong.',{stats:{social:3,energy:-3},career:{coworkers:4}}),
+  ]},
   { id: 'owner-staff-training', path: 'business', topic: 'staff', eligibility: { business: true, minStaff: 1 }, title: 'Your team asks for a practical training session', choices: [
     choice('coach-team', 'Spend time practising the tricky jobs together', 'You slow your own work to show the team a reliable method.', { stats: { energy: -7, knowledge: 2 } }, later('training-report', 3, 6, 'The team uses the method you practised. Fewer jobs need redoing and customers notice the care.', { business: { trust: 5 }, stats: { energy: 4 } })),
     choice('pay-training', 'Pay R180 for a short practical course', 'R180 covers training. There is no instant cash reward.', { cash: -180 }, later('course-report', 4, 8, 'The team returns from the course with a better checklist and handles difficult jobs more confidently.', { business: { trust: 7 }, stats: { knowledge: 3 } })),

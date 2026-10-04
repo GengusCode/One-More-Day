@@ -141,6 +141,7 @@ function assignWorkDecision(state, random) {
   const drawn = drawEvent({
     deckState: next.eventDecks[deckKey], eligibleIds: choices,
     recentIds: next.eventHistory.workIds || [], random,
+    recentLimit: Math.max(1,Math.floor(choices.length/2)),
   });
   next.dailyState.workDecisionId = drawn.eventId;
   next.eventDecks[deckKey] = drawn.deckState;
@@ -525,15 +526,16 @@ export function settleRoutineDay(state, { random = Math.random, driverMode = fal
 
   const transactions = [];
   let automaticChoice = null;
-  if (isWorkingDay(next) && hasPath(next)) {
+  if (isWorkingDay(next) && hasPath(next) && random()<.45) {
     next = assignWorkDecision(next,random);
     const event=WORK_DECISIONS.find(item=>item.id===next.dailyState.workDecisionId);
-    const choice=event?.choices.find(item=> {
+    const suitable=event?.choices.filter(item=> {
       const effects=item.effects || {};
       return !item.risk && !(effects.cash<0) && !item.followUp &&
         !(effects.business?.trust<=-8) &&
         !(effects.stats?.reputation<0);
-    });
+    }) || [];
+    const choice=suitable[Math.min(suitable.length-1,Math.floor(random()*suitable.length))];
     if(event && !choice) {
       next.dailyState.phase='work';
       next.dailyState.needsTravel=true;

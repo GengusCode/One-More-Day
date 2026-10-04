@@ -30,6 +30,21 @@ export function showStatChanges(root, previous, current) {
   }
 }
 
+export function groupSkipHistory(rows,kind) {
+  const groups=new Map();
+  for(const row of rows) {
+    const key=JSON.stringify(kind==='choices'?[row.title,row.choice,row.result]:[row.reason,row.text]);
+    const group=groups.get(key);
+    if(group) {group.count++;group.firstDay=Math.min(group.firstDay,row.day);group.lastDay=Math.max(group.lastDay,row.day);}
+    else groups.set(key,{...row,count:1,firstDay:row.day,lastDay:row.day});
+  }
+  return [...groups.values()].sort((a,b)=>b.lastDay-a.lastDay);
+}
+
+function groupedHistoryMarkup(rows,kind) {
+  return groupSkipHistory(rows,kind).map(row=>`<details class="skip-history-group"><summary><strong>${escapeText(kind==='choices'?row.title:row.reason.replaceAll('-',' '))}</strong><b>×${row.count}</b><small>${row.firstDay===row.lastDay?'Day '+row.firstDay:'Days '+row.firstDay+'–'+row.lastDay}</small></summary>${kind==='choices'?`<p>Chose: ${escapeText(row.choice)}</p><p>${escapeText(row.result)}</p>`:`<p>${escapeText(row.text)}</p>`}</details>`).join('');
+}
+
 function skipSummaryMarkup(state) {
   const summary=state.timeline.lastSummary;
   if(!summary?.before || summary.endDay!==state.calendar.day) return '';
@@ -38,7 +53,7 @@ function skipSummaryMarkup(state) {
   const automatic=summary.automaticChoices || [];
   const milestones=summary.milestones || [];
   const label=summary.stoppedEarly ? `${summary.daysAdvanced} days passed` : summary.requestedDays===365 ? "One year later" : summary.requestedDays===30 ? "One month later" : "One week later";
-  return `<section class="skip-summary" aria-label="Time passed"><h3>⏩ ${label}</h3><p>Decisions were handled automatically while work, bills and daily life continued.${summary.reason?' Paused for: '+escapeText(summary.reason.replaceAll('-',' '))+'. '+Number(summary.remainingDays || 0)+' days remain in the requested period.':''}</p>${rows.map(([label,before,after])=>`<div class="money-row"><span>${escapeText(label)}</span><strong>${escapeText(before)} → ${escapeText(after)}</strong></div>`).join('')}${milestones.length?`<details class="skip-choices"><summary>${milestones.length} milestones & follow-ups</summary>${milestones.map(row=>`<article><strong>Day ${row.day} · ${escapeText(row.reason.replaceAll('-',' '))}</strong><p>${escapeText(row.text)}</p></article>`).join('')}</details>`:''}${automatic.length?`<details class="skip-choices"><summary>${automatic.length} routine choices handled automatically</summary>${automatic.map(row=>`<article><strong>Day ${row.day} · ${escapeText(row.title)}</strong><p>Chose: ${escapeText(row.choice)}</p><p>${escapeText(row.result)}</p></article>`).join('')}</details>`:''}</section>`;
+  return `<section class="skip-summary" aria-label="Time passed"><h3>⏩ ${label}</h3><p>Decisions were handled automatically while work, bills and daily life continued.${summary.reason?' Paused for: '+escapeText(summary.reason.replaceAll('-',' '))+'. '+Number(summary.remainingDays || 0)+' days remain in the requested period.':''}</p>${rows.map(([label,before,after])=>`<div class="money-row"><span>${escapeText(label)}</span><strong>${escapeText(before)} → ${escapeText(after)}</strong></div>`).join('')}${milestones.length?`<details class="skip-choices"><summary>${milestones.length} milestones & follow-ups</summary>${groupedHistoryMarkup(milestones,'milestones')}</details>`:''}${automatic.length?`<details class="skip-choices"><summary>${automatic.length} routine choices handled automatically</summary>${groupedHistoryMarkup(automatic,'choices')}</details>`:''}</section>`;
 }
 
 export function escapeText(value) {

@@ -22,12 +22,13 @@ export function drawEvent({
   deckState,
   eligibleIds,
   recentIds = [],
+  recentLimit = 10,
   random = Math.random,
 }) {
   const eligible = [...new Set(eligibleIds)];
   if (!eligible.length) return { eventId: null, deckState: { order: [], seen: [] } };
   const recent = new Set(recentIds.filter((id) => eligible.includes(id))
-    .slice(-Math.min(10, Math.max(1, eligible.length - 1))));
+    .slice(-Math.min(recentLimit, Math.max(1, eligible.length - 1))));
   let state = deckState && Array.isArray(deckState.order)
     ? { order: deckState.order.slice(), seen: Array.isArray(deckState.seen) ? deckState.seen.slice() : [] }
     : createDeckState(eligible, random);
