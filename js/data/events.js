@@ -436,6 +436,8 @@ export function isEventEligible(event, state) {
   if (rule.minAge && state.calendar.age < rule.minAge) return false;
   if (rule.maxAge && state.calendar.age > rule.maxAge) return false;
   if (rule.minStaff && state.business.staff.length < rule.minStaff) return false;
+  if (rule.minPremises && (state.business.premises || []).length < rule.minPremises) return false;
+  if (rule.manager && !state.business.staff.some(person => person.roleId === 'manager')) return false;
   if (rule.career && !state.career.active) return false;
   if (rule.business && !state.business.active) return false;
   if (rule.businessId && state.business.id !== rule.businessId) return false;

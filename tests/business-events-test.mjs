@@ -1,0 +1,31 @@
+import assert from 'node:assert/strict';
+import {createDefaultState,validateState} from '../js/core/state.js';
+import {startBusiness,resolveOwnerChoice} from '../js/systems/business.js';
+import {WORK_DECISIONS,isEventEligible} from '../js/data/events.js';
+import {resolveDueEvents,describeConsequence} from '../js/systems/event-deck.js';
+const event=id=>WORK_DECISIONS.find(item=>item.id===id);
+let s=startBusiness(createDefaultState(),'moving-service');s.finances.cash=1000;
+for(const id of ['owner-staff-training','owner-team-disagreement','owner-manager-problem','owner-branch-booking']) {
+ assert.ok(event(id),id+' exists');assert.equal(isEventEligible(event(id),s),false,id+' unavailable to solo owner');
+}
+s.business.staff=[{id:'one',roleId:'helper',name:'Helper',wage:80}];
+assert.equal(isEventEligible(event('owner-staff-training'),s),true);
+assert.equal(isEventEligible(event('owner-team-disagreement'),s),false);
+s.business.staff.push({id:'two',roleId:'manager',name:'Manager',wage:180});
+assert.equal(isEventEligible(event('owner-team-disagreement'),s),true);
+assert.equal(isEventEligible(event('owner-manager-problem'),s),true);
+s.business.premises=[{id:'site',name:'Premises',value:26000,openedDay:1}];
+assert.equal(isEventEligible(event('owner-branch-booking'),s),true);
+const booked=resolveOwnerChoice(s,'owner-branch-booking','confirm-booking',{random:()=>0});
+assert.equal(booked.state.finances.cash,880,'supplies paid before booking');
+assert.match(booked.transactions[0].label,/R120/);
+const saved=validateState(booked.state);
+const due=saved.delayedEvents.at(-1);
+assert.match(describeConsequence(due),/Because you chose/);
+const paid=resolveDueEvents(saved,due.dueDay);
+assert.equal(paid.state.finances.cash,1200,'R320 payment after R120 supplies');
+assert.equal(resolveDueEvents(paid.state,due.dueDay).state.finances.cash,1200,'payment only once');
+const delegated=resolveOwnerChoice(s,'owner-manager-problem','delegate-plan',{random:()=>0}).state;
+assert.equal(delegated.finances.cash,s.finances.cash,'delegation has no arbitrary cash reward');
+assert.match(delegated.delayedEvents.at(-1).payload.result,/manager/i);
+console.log('business events: staff/site gates, saved reports and booking receipt passed');
