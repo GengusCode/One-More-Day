@@ -13,7 +13,7 @@ const css = await readFile(file("v09-life-begins.css"), "utf8");
 assert.match(index, /type="module"\s+src="js\/app\.js"/);
 assert.match(app, /createDefaultState/);
 assert.doesNotMatch(app, /removeItem\(SAVE_KEY_V9\)/);
-assert.match(index, /href="v09-life-begins\.css"/);
+assert.match(index, /href="v09-life-begins\.css(?:\?v=[\w-]+)?"/);
 assert.doesNotMatch(index, /js\/life-game\.js/);
 assert.doesNotMatch(index, /v07-playful\.css/);
 assert.match(css, /assets\/cover\/south-african-flag\.svg/);

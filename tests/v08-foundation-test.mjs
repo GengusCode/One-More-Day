@@ -64,7 +64,7 @@ test("the production entry references existing local modules and styles", async 
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
   assert.match(html, /id="app"/);
   assert.match(html, /type="module"\s+src="js\/app\.js"/);
-  assert.match(html, /href="v09-life-begins\.css"/);
+  assert.match(html, /href="v09-life-begins\.css(?:\?v=[\w-]+)?"/);
   await access(new URL("../js/app.js", import.meta.url));
   await access(new URL("../v09-life-begins.css", import.meta.url));
   await assert.rejects(access(new URL("../v08-preview.html", import.meta.url)));

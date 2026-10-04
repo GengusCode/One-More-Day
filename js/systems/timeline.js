@@ -38,6 +38,7 @@ export function fastForward(state, days, { random = Math.random } = {}) {
   const driverMode = next.transport.dailyAssignment?.mode === "driver";
   let daysAdvanced = 0;
   let interruptionReason = "";
+  const automaticChoices=[];
 
   for (let index = 0; index < requestedDays; index += 1) {
     const upcomingDayId = `routine-day-${next.calendar.day + 1}`;
@@ -48,6 +49,7 @@ export function fastForward(state, days, { random = Math.random } = {}) {
     const result = settleRoutineDay(next, { random, driverMode });
     next = result.state;
     daysAdvanced += 1;
+    if(result.automaticChoice) automaticChoices.push(result.automaticChoice);
     next.timeline.settledDayIds = [...next.timeline.settledDayIds, upcomingDayId].slice(-400);
     if (result.interrupted) {
       interruptionReason = result.reason;
@@ -62,6 +64,6 @@ export function fastForward(state, days, { random = Math.random } = {}) {
     reason: interruptionReason,
   });
   next.timeline.lastSummary = summary;
-  Object.assign(summary,{before,after:{age:next.calendar.age,cash:next.finances.cash,stats:clone(next.stats)},endDay:next.calendar.day});
+  Object.assign(summary,{before,after:{age:next.calendar.age,cash:next.finances.cash,stats:clone(next.stats)},endDay:next.calendar.day,remainingDays:requestedDays-daysAdvanced,automaticChoices});
   return { state: next, summary, interrupted: Boolean(interruptionReason) };
 }

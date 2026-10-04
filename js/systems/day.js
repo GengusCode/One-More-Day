@@ -502,7 +502,7 @@ export function settleRoutineDay(state, { random = Math.random, driverMode = fal
   const highImpactDue = next.delayedEvents
     .filter((item) => Number(item.dueDay) <= next.calendar.day)
     .sort((a, b) => (Number(b.severity) || 0) - (Number(a.severity) || 0))
-    .find((item) => item.eventId === "job-application" || item.payload?.highImpact || Number(item.severity) >= 3);
+    .find((item) => !item.payload?.automaticRoutine && (item.eventId === "job-application" || item.payload?.highImpact || Number(item.severity) >= 3));
   if (highImpactDue) {
     const interruptedState = startDay(next, { random });
     return {
@@ -524,6 +524,30 @@ export function settleRoutineDay(state, { random = Math.random, driverMode = fal
   if (due.primary) next.dailyState.result = describeConsequence(due.primary);
 
   const transactions = [];
+  let automaticChoice = null;
+  if (isWorkingDay(next) && hasPath(next)) {
+    next = assignWorkDecision(next,random);
+    const event=WORK_DECISIONS.find(item=>item.id===next.dailyState.workDecisionId);
+    const choice=event?.choices.find(item=> {
+      const effects=item.effects || {};
+      return !item.risk && !(effects.cash<0) && !item.followUp &&
+        !(effects.business?.trust<=-8) &&
+        !(effects.stats?.reputation<0);
+    });
+    if(event && !choice) {
+      next.dailyState.phase='work';
+      next.dailyState.needsTravel=true;
+      return {state:next,transactions:[],interrupted:true,reason:'decision-needed'};
+    }
+    if(choice) {
+      const previousIds=new Set(next.delayedEvents.map(item=>item.outcomeId));
+      const resolved=next.career.active ? resolveCareerChoice(next,event.id,choice.id,{random}) : resolveOwnerChoice(next,event.id,choice.id,{random});
+      next=resolved.state;
+      transactions.push(...resolved.transactions);
+      next.delayedEvents.forEach(item=>{if(!previousIds.has(item.outcomeId))item.payload.automaticRoutine=true;});
+      automaticChoice={day:next.calendar.day,title:event.title,choice:choice.label,result:resolved.status.result};
+    }
+  }
   if (driverMode && next.transport.owned.includes("car")) {
     const driver = assignCarForDay(next, "driver", random);
     if (driver.ok) {
@@ -534,7 +558,9 @@ export function settleRoutineDay(state, { random = Math.random, driverMode = fal
   }
 
   if (isWorkingDay(next) && hasPath(next)) {
-    const mode = next.transport.owned.includes("bicycle") ? "bicycle" : "taxi";
+    const options=getTravelOptions(next);
+    const preferred=next.transport.preferredVehicleId;
+    const mode=options.some(option=>option.id===preferred) ? preferred : options.some(option=>option.id==='bicycle') ? 'bicycle' : 'taxi';
     const commute = resolveTravel(next, mode, {});
     next = commute.state;
     transactions.push(...commute.transactions);
@@ -567,7 +593,7 @@ export function settleRoutineDay(state, { random = Math.random, driverMode = fal
       : reason === "business-closed" ? "Your business has closed."
         : reason === "critical-health" ? "Your health needs your attention."
           : "Your cash has dropped below zero.";
-  return { state: next, transactions, interrupted: Boolean(reason), reason };
+  return { state: next, transactions, automaticChoice, interrupted: Boolean(reason), reason };
 }
 
 export function getCurrentDecision(state) {

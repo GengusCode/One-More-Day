@@ -193,7 +193,7 @@ function timeApp(state) {
   return {
     summary: "Move ahead without losing the story",
     cards: [{
-      id: "time", icon: "🗓️", title: "How far ahead?", text: "Time keeps moving: work earns money, bills are paid and wellbeing changes each day. Birthdays increase your age. Big moments interrupt the skip; a summary shows what changed.", badge: blocked ? "Unavailable" : "Ready",
+      id: "time", icon: "🗓️", title: "How far ahead?", text: "Routine work choices are handled automatically, with a log of what was chosen. Your selected vehicle is used when available. Wages, bills and wellbeing continue each day. Purchases, commitments, birthdays and serious events pause the skip for your attention.", badge: blocked ? "Unavailable" : "Ready",
       actions: [action("week", "FAST_FORWARD", "One week", detail, !week.ok), action("month", "FAST_FORWARD", "One month", month.ok ? "Stops for important moments" : month.reason, !month.ok), action("year", "FAST_FORWARD", "Age one year", "Stops for important moments", !year.ok)],
     }],
   };

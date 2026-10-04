@@ -35,7 +35,8 @@ function skipSummaryMarkup(state) {
   if(!summary?.before || summary.endDay!==state.calendar.day) return '';
   const rows=[['Age',summary.before.age,summary.after.age],['Cash',formatRand(summary.before.cash),formatRand(summary.after.cash)],
     ...Object.keys(STAT_ICONS).filter(key=>summary.before.stats[key]!==summary.after.stats[key]).map(key=>[key.toUpperCase(),`${summary.before.stats[key]}%`,`${summary.after.stats[key]}%`])];
-  return `<section class="skip-summary" aria-label="Time passed"><h3>⏩ ${summary.daysAdvanced} days passed</h3><p>Work, bills and daily life continued.${summary.reason?' Stopped for: '+escapeText(summary.reason.replaceAll('-',' '))+'.':''}</p>${rows.map(([label,before,after])=>`<div class="money-row"><span>${escapeText(label)}</span><strong>${escapeText(before)} → ${escapeText(after)}</strong></div>`).join('')}</section>`;
+  const automatic=summary.automaticChoices || [];
+  return `<section class="skip-summary" aria-label="Time passed"><h3>⏩ ${summary.daysAdvanced} of ${summary.requestedDays} days passed</h3><p>Work, bills and daily life continued.${summary.reason?' Paused for: '+escapeText(summary.reason.replaceAll('-',' '))+'. '+Number(summary.remainingDays || 0)+' days remain in the requested period.':''}</p>${rows.map(([label,before,after])=>`<div class="money-row"><span>${escapeText(label)}</span><strong>${escapeText(before)} → ${escapeText(after)}</strong></div>`).join('')}${automatic.length?`<details class="skip-choices"><summary>${automatic.length} routine choices handled automatically</summary>${automatic.map(row=>`<article><strong>Day ${row.day} · ${escapeText(row.title)}</strong><p>Chose: ${escapeText(row.choice)}</p><p>${escapeText(row.result)}</p></article>`).join('')}</details>`:''}</section>`;
 }
 
 export function escapeText(value) {
