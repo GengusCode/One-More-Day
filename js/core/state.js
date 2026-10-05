@@ -394,6 +394,8 @@ export function validateState(candidate) {
           ? person.type.trim().toLowerCase().slice(0, 20)
           : "contact",
         score: clamp(person.score ?? 50),
+        lastContactDay: Math.max(0, Math.min(state.calendar.day, Math.floor(Number(person.lastContactDay) || 0))),
+        lastReply: typeof person.lastReply === "string" ? person.lastReply.slice(0, 300) : "",
         trait: typeof person.trait === "string" && person.trait.trim()
           ? person.trait.trim().toLowerCase().slice(0, 24)
           : "grounded",

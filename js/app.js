@@ -1,3 +1,4 @@
+import {contactPerson} from "./systems/relationships.js";
 import { beginBet, completeBet } from "./systems/betting.js";
 import { contributeStokvel } from "./systems/household.js";
 import {
@@ -319,6 +320,14 @@ async function dispatch(action, payload = {}) {
     if (!result.ok) error = "That upgrade is not available right now.";
     else await commit(result.state);
     render();
+    return;
+  }
+  if (action === "CONTACT_PERSON") {
+    const separator = (payload.id || '').lastIndexOf(':');
+    const result = contactPerson(state, (payload.id || '').slice(0, separator), (payload.id || '').slice(separator + 1));
+    if (result.ok) await commit(result.state);
+    else error = result.reason;
+    render({announcement: result.ok ? result.message : ''});
     return;
   }
   if (action === "HIRE_EMPLOYEE") {

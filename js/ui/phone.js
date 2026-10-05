@@ -1,3 +1,4 @@
+import {getContactOptions, getRelationshipLabel} from "../systems/relationships.js";
 import { canBuyBusinessVehicle, getVehicleInventory, getHome, HOME_OPTIONS } from "../systems/vehicles.js";
 import {buildMoneyReport} from "./money-ledger.js";
 import { stokvelMonth } from "../systems/household.js";
@@ -148,11 +149,13 @@ function businessApp(state) {
 function peopleApp(state) {
   const people = Object.values(state.relationships.people || {});
   return {
-    summary: `${people.length} people in your circle`,
+    summary: `${people.length} people in your circle · One contact per person each day`,
     cards: people.map((person) => ({
       id: person.id, icon: person.type === "guardian" ? "🏠" : person.type === "mentor" ? "🧭" : "🙂",
-      title: person.name, text: `${person.type} · ${person.trait || "grounded"}`,
-      badge: `${person.score}/100 · ${person.reaction || "neutral"}`, actions: [],
+      title: person.name, text: `${person.type} · ${person.trait || "grounded"}. ${person.lastReply || "Make time to keep this relationship growing."}`,
+      badge: `${getRelationshipLabel(person.score)} · ${person.score}/100`,
+      actions: getContactOptions(state, person.id).map(option => action(`${person.id}:${option.id}`, "CONTACT_PERSON", option.label,
+        option.reason || `−${option.energy} energy · +${option.bond} relationship · +${option.social} social · +${option.happiness} happiness`, option.disabled)),
     })),
   };
 }
