@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { createNewLife } from "../js/core/state.js";
 import { getCurrentDecision } from "../js/systems/day.js";
 import { chooseSchoolDecision } from "../js/systems/life.js";
-import { applyForJob, getAvailableJobs, resolveJobApplication } from "../js/systems/jobs.js";
+import { applyForJob, getAvailableJobs, resolveJobApplication, resolveInterview } from "../js/systems/jobs.js";
 import { startCareer } from "../js/systems/career.js";
 
 const fresh = createNewLife({ name: "Karabo", gender: "non-binary" });
@@ -30,20 +30,24 @@ assert.equal(adult.life.school.step, "complete");
 assert.equal(adult.finances.cash, 1_000);
 
 const jobs = getAvailableJobs(adult);
-assert.ok(jobs.filter(job=>job.eligible).length >= 3);
+assert.ok(jobs.length <= 3);
 assert.ok(jobs.some((job) => job.eligible));
+assert.ok(jobs.some((job) => job.type === "business" && job.eligible));
 
-const office = jobs.find((job) => job.id === "office-trainee");
-assert.equal(office.eligible, true);
-const applied = applyForJob(adult, office.id);
+const careerOpening = jobs.find((job) => job.type === "career" && job.eligible);
+assert.equal(careerOpening.eligible, true);
+const applied = applyForJob(adult, careerOpening.id);
 assert.equal(applied.ok, true);
 assert.equal(applied.status, "pending");
 assert.deepEqual(getAvailableJobs(applied.state), []);
-assert.equal(applyForJob(applied.state, office.id).ok, false);
+assert.equal(applyForJob(applied.state, careerOpening.id).ok, false);
 const resolved = resolveJobApplication(applied.state, applied.applicationId);
 assert.equal(resolved.resolved, true);
-assert.equal(resolved.accepted, true);
-assert.equal(resolved.state.career.active, true);
+assert.equal(resolved.interviewScheduled, true);
+assert.equal(resolved.state.career.active, false);
+const interviewed = resolveInterview(resolved.state, "show-examples", { random: () => 0 });
+assert.equal(interviewed.status.accepted, true);
+assert.equal(interviewed.state.career.active, true);
 
 const startup = jobs.find((job) => job.type === "business" && job.eligible);
 const launched = applyForJob(adult, startup.id);
@@ -54,6 +58,6 @@ assert.equal(launched.state.dailyState.complete, true);
 
 const employed = startCareer(adult, "office");
 assert.deepEqual(getAvailableJobs(employed), []);
-assert.equal(applyForJob(employed, "office-trainee").ok, false);
+assert.equal(applyForJob(employed, careerOpening.id).ok, false);
 
 console.log("v09 school/jobs: school opening and opportunity rules passed");

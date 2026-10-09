@@ -100,13 +100,20 @@ function runTimeline(state, requestedDays, {
     }
     next.timeline.settledDayIds = [...next.timeline.settledDayIds, upcomingDayId].slice(-400);
 
-    if (!result.interrupted) continue;
+    if (!result.interrupted) {
+      if (next.jobs?.pendingInterview) {
+        interruptionReason = "job-result";
+        break;
+      }
+      continue;
+    }
     const resultText = next.dailyState.result || result.reason.replaceAll("-", " ");
     const existing = milestones.find((row) => row.day === next.calendar.day && row.text === resultText);
     if (existing) existing.reason = result.reason;
     else milestones.push({ day: next.calendar.day, reason: result.reason, text: resultText });
 
     const mustStop = next.life.ended
+      || result.reason === "job-result"
       || result.reason === "study-checkpoint"
       || stopOnAnyInterruption;
     if (mustStop) {
@@ -114,6 +121,10 @@ function runTimeline(state, requestedDays, {
       break;
     }
     next = finishInterruptedDay(next, { random, automaticChoices });
+    if (next.jobs?.pendingInterview) {
+      interruptionReason = "job-result";
+      break;
+    }
   }
 
   const summary = compactSummary({

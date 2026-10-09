@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { createDefaultState, createNewLife } from "../js/core/state.js";
 import { startCareer } from "../js/systems/career.js";
 import { chooseSchoolDecision } from "../js/systems/life.js";
-import { applyForJob } from "../js/systems/jobs.js";
+import { applyForJob, getAvailableJobs } from "../js/systems/jobs.js";
 import { canFastForward, fastForward } from "../js/systems/timeline.js";
 
 const state = createDefaultState();
@@ -59,7 +59,9 @@ graduate.life.school.step = "last-morning";
 graduate = chooseSchoolDecision(graduate, "revise-notes");
 graduate = chooseSchoolDecision(graduate, "steady");
 graduate = chooseSchoolDecision(graduate, "head-home");
-const pending = applyForJob(graduate, "office-trainee");
+const opening = getAvailableJobs(graduate, { limit: 20 })
+  .find((job) => job.type === "career" && job.eligible);
+const pending = applyForJob(graduate, opening.id);
 pending.state.delayedEvents.push({
   dueDay: pending.state.calendar.day + 1,
   eventId: "family-emergency",
@@ -68,10 +70,11 @@ pending.state.delayedEvents.push({
   payload: { highImpact: true, result: "A family issue also needs attention." },
 });
 const jobResult = fastForward(pending.state, 7, { random: () => 0.5 });
-assert.equal(jobResult.interrupted, false);
-assert.equal(jobResult.summary.daysAdvanced, 7);
+assert.equal(jobResult.interrupted, true);
+assert.equal(jobResult.summary.reason, "job-result");
 assert.ok(jobResult.summary.milestones.some(row=>row.reason==="important-event"));
-assert.equal(jobResult.state.career.active, true);
+assert.equal(jobResult.state.career.active, false);
+assert.ok(jobResult.state.jobs.pendingInterview);
 
 const driver = completeAdult("Nadia");
 driver.transport.owned = ["car"];

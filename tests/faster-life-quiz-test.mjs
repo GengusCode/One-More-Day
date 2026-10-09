@@ -12,13 +12,13 @@ test('an eight-question test saves progress and scores real answers',()=>{
  assert.equal(state.life.school.step,'entrance-test');
  for(let i=0;i<8;i++) {const question=getSchoolDecision(state);assert.equal(question.choices.length,4);const source=exam.ENTRANCE_QUESTIONS.find(q=>q.id===state.life.school.quiz.order[i]);state=chooseSchoolDecision(state,source.correct);if(i===3)state=validateState(state);}
  assert.equal(state.life.stage,'adult');assert.equal(state.life.examResult.score,100);assert.equal(state.stats.knowledge,85);assert.equal(state.finances.cash,1000);
- assert.equal(getAvailableJobs(state).find(j=>j.id==='office-trainee').eligible,true);
+ const openings=getAvailableJobs(state);assert.ok(openings.length<=3);assert.ok(openings.some(j=>j.type==='career'&&j.eligible));
  assert.equal(chooseSchoolDecision(state,'a').finances.cash,1000);
 });
 test('failing the entrance test still offers practical opportunities',()=>{
  let state=createNewLife({name:'Thabo',gender:'man'});
  for(let i=0;i<8;i++){const question=exam.ENTRANCE_QUESTIONS.find(q=>q.id===state.life.school.quiz.order[i]);state=chooseSchoolDecision(state,question.choices.find(c=>c.id!==question.correct).id);}
- assert.equal(state.life.examResult.score,0);assert.equal(state.stats.knowledge,20);assert.equal(getAvailableJobs(state).some(j=>j.id==='office-trainee'),false);assert.ok(getAvailableJobs(state).some(j=>j.type==='business'&&j.eligible));
+ assert.equal(state.life.examResult.score,0);assert.equal(state.stats.knowledge,20);assert.ok(getAvailableJobs(state).length<=3);assert.ok(getAvailableJobs(state).some(j=>j.type==='business'&&j.eligible));
 });
 test('a headline decision finishes work rather than adding a second work choice',()=>{
  let state=choosePath(createDefaultState(),'office',{random:()=>0});state.dailyState.phase='headline';state.dailyState.activeEventId='friend-hard-day';

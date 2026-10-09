@@ -15,7 +15,7 @@ import { startCareer, resolveCareerChoice, settleCareerDay, getPromotionDecision
 import { startBusiness, resolveOwnerChoice, settleBusinessDay } from "./business.js";
 import { getTravelOptions, resolveTravel, resetDailyTransport, assignCarForDay } from "./travel.js";
 import { advanceLifeCalendar, evaluateLifeEnding, getSchoolDecision } from "./life.js";
-import { resolveJobApplication } from "./jobs.js";
+import { resolveJobApplication, getInterviewDecision } from "./jobs.js";
 import { getCurrentStudyDecision, settleEducationDay } from "./education.js";
 
 const clone = (value) => (
@@ -616,6 +616,8 @@ export function settleRoutineDay(state, { random = Math.random, driverMode = fal
 export function getCurrentDecision(state) {
   const schoolDecision = getSchoolDecision(state);
   if (schoolDecision) return schoolDecision;
+  const interviewDecision = getInterviewDecision(state);
+  if (interviewDecision) return interviewDecision;
   const studyDecision = getCurrentStudyDecision(state);
   if (studyDecision) return studyDecision;
   const promotionDecision = getPromotionDecision(state);

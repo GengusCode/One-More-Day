@@ -3,7 +3,7 @@ import {test} from 'node:test';
 import {createNewLife,createDefaultState,validateState} from '../js/core/state.js';
 import {ENTRANCE_QUESTIONS,createEntranceQuiz} from '../js/data/entrance-test.js';
 import * as life from '../js/systems/life.js';
-import {getAvailableJobs,applyForJob,resolveJobApplication} from '../js/systems/jobs.js';
+import {getAvailableJobs,applyForJob,resolveJobApplication,resolveInterview} from '../js/systems/jobs.js';
 import {advanceDay} from '../js/systems/day.js';
 import {scheduleChoiceConsequence,resolveDueEvents,describeConsequence} from '../js/systems/event-deck.js';
 import {EVENTS,WORK_DECISIONS} from '../js/data/events.js';
@@ -22,14 +22,14 @@ test('answers received after the deadline cannot earn marks',()=>{
  const question=ENTRANCE_QUESTIONS.find(q=>q.id===state.life.school.quiz.order[0]);
  const next=life.chooseSchoolDecision(state,question.correct,{now:1001});assert.equal(next.life.school.quiz.answers[0].correct,false);
 });
-test('low scores provide three paths and stronger results add higher-paying roles',()=>{
+test('low scores keep a practical path while stronger results improve career access',()=>{
  const low=createDefaultState();low.finances.cash=1000;low.life.examResult={score:0};low.stats.knowledge=20;
- const lowJobs=getAvailableJobs(low);assert.ok(lowJobs.filter(j=>j.eligible).length>=3);
+ const lowJobs=getAvailableJobs(low);assert.ok(lowJobs.length<=3);assert.ok(lowJobs.some(j=>j.type==='business'&&j.eligible));
  const high=structuredClone(low);high.life.examResult.score=100;high.stats.knowledge=85;
- const highJobs=getAvailableJobs(high);assert.ok(highJobs.length>lowJobs.length);assert.ok(highJobs.some(j=>j.id==='junior-analyst'));assert.ok(!lowJobs.some(j=>j.id==='junior-analyst'));
- const highApplied=applyForJob(high,'junior-analyst');const highRole=resolveJobApplication(highApplied.state,highApplied.applicationId);
- const lowApplied=applyForJob(low,'shop-assistant');const lowRole=resolveJobApplication(lowApplied.state,lowApplied.applicationId);
- assert.equal(highRole.accepted,true);assert.equal(lowRole.accepted,true);assert.ok(highRole.state.career.salary>lowRole.state.career.salary);
+ const highJobs=getAvailableJobs(high,{limit:20});const highOpening=highJobs.find(j=>j.type==='career'&&j.eligible);assert.ok(highOpening);
+ const highApplied=applyForJob(high,highOpening.id);const invitation=resolveJobApplication(highApplied.state,highApplied.applicationId);const highRole=resolveInterview(invitation.state,'show-examples',{random:()=>0});
+ const lowOpening=lowJobs.find(j=>j.type==='business'&&j.eligible);const lowRole=applyForJob(low,lowOpening.id);
+ assert.equal(highRole.status.accepted,true);assert.equal(lowRole.status,'accepted');assert.ok(highRole.state.career.salary>0);assert.equal(lowRole.state.business.active,true);
 });
 test('normal progression moves one day and consequence text explains the cause',()=>{
  const state=createDefaultState();state.dailyState.phase='complete';state.dailyState.complete=true;
