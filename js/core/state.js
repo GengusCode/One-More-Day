@@ -213,7 +213,11 @@ export function calculateNetWorth(state) {
   );
   const vehicleEquity = (state.garage?.vehicles || []).reduce((sum, vehicle) => sum + (Number(vehicle.value) || 0) - (Number(vehicle.remaining) || 0), 0);
   const businessValue = Math.max(0, Number(state.business?.value) || 0);
-  return Math.round((Number(state.finances?.cash) || 0) + assetValue + businessValue + vehicleEquity + Math.max(0, Number(state.stokvel?.balance) || 0));
+  const liabilities = (state.finances?.liabilities || []).reduce(
+    (total, liability) => total + Math.max(0, Number(liability?.outstandingBalance) || 0),
+    0,
+  );
+  return Math.round((Number(state.finances?.cash) || 0) + assetValue + businessValue + vehicleEquity + Math.max(0, Number(state.stokvel?.balance) || 0) - liabilities);
 }
 
 function addRelationshipEffects(next, effects) {
