@@ -21,7 +21,7 @@ class MemoryStorage {
 }
 
 const fresh = createNewLife({ name: "Amahle", gender: "woman" });
-assert.equal(fresh.schemaVersion, 9);
+assert.equal(fresh.schemaVersion, 10);
 assert.equal(fresh.calendar.age, 18);
 assert.equal(fresh.life.stage, "school-finale");
 assert.equal(fresh.life.school.step, "entrance-test");
@@ -41,12 +41,12 @@ const storage = new MemoryStorage({ "one-more-day-v08": oldValue });
 
 const migrated = loadGame(storage);
 assert.equal(migrated.status, "migrated");
-assert.equal(migrated.state.schemaVersion, 9);
+assert.equal(migrated.state.schemaVersion, 10);
 assert.equal(migrated.state.life.stage, "adult");
 assert.equal(migrated.state.finances.cash, 8_400);
 assert.equal(migrated.state.business.active, true);
 assert.deepEqual(migrated.state.assets.ownedUpgradeIds, ["car-wash-pressure-washer"]);
 assert.equal(storage.getItem("one-more-day-v08"), oldValue);
-assert.equal(JSON.parse(storage.getItem("one-more-day-v09")).schemaVersion, 9);
+assert.equal(JSON.parse(storage.getItem("one-more-day-v10")).schemaVersion, 10);
 
 console.log("v09 life state: fresh school and v08 adult migration passed");

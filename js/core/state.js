@@ -2,10 +2,11 @@ import { createEntranceQuiz } from "../data/entrance-test.js";
 import { ECONOMY } from "../data/economy.js";
 import { ensureStarterPeople } from "../systems/people.js";
 
+export const SAVE_KEY_V10 = "one-more-day-v10";
 export const SAVE_KEY_V9 = "one-more-day-v09";
 export const SAVE_KEY_V8 = "one-more-day-v08";
-export const LEGACY_SAVE_KEYS = Object.freeze([SAVE_KEY_V8, "one-more-day-v06"]);
-export const CORRUPT_BACKUP_KEY = "one-more-day-v09-corrupt-backup";
+export const LEGACY_SAVE_KEYS = Object.freeze([SAVE_KEY_V9, SAVE_KEY_V8, "one-more-day-v06"]);
+export const CORRUPT_BACKUP_KEY = "one-more-day-v10-corrupt-backup";
 
 export const LIFE_STAGES = Object.freeze(["school-finale", "adult", "later-life", "ended"]);
 
@@ -29,7 +30,7 @@ const clamp = (value, min = 0, max = 100) => Math.max(min, Math.min(max, Number(
 
 export function createDefaultState() {
   return {
-    schemaVersion: 9,
+    schemaVersion: 10,
     profile: {
       name: "",
       gender: "non-binary",
@@ -63,13 +64,20 @@ export function createDefaultState() {
       transactions: [],
       lastTransactionId: 0,
       dailyLedger: null,
+      liabilities: [],
     },
     career: {
       active: false,
       pathId: null,
+      familyId: null,
+      employerId: null,
       roleIndex: 0,
       role: "",
       salary: 0,
+      experience: 0,
+      interviewHistory: [],
+      openingCooldowns: {},
+      pendingPromotion: null,
       performance: 50,
       boss: 50,
       coworkers: 50,
@@ -99,6 +107,17 @@ export function createDefaultState() {
       applications: [],
       activeApplicationId: null,
       lastResult: null,
+      pendingInterview: null,
+    },
+    education: {
+      applications: [],
+      active: null,
+      completed: [],
+      incomplete: [],
+      accessModifiers: { bridgeBonus: 0, experienceByField: {} },
+      checkpointHistory: [],
+      settledDayIds: [],
+      lastOutcome: null,
     },
     relationships: { people: {} },
     transport: {
@@ -122,6 +141,7 @@ export function createDefaultState() {
     timeline: {
       lastSummary: null,
       settledDayIds: [],
+      educationMilestone: null,
     },
     dailyState: {
       day: 1,
@@ -305,11 +325,53 @@ function normaliseTransactions(value) {
   }));
 }
 
+function normaliseObjectArray(value, limit = 100) {
+  return (Array.isArray(value) ? value : [])
+    .filter((item) => item && typeof item === "object" && !Array.isArray(item))
+    .slice(-limit)
+    .map((item) => clone(item));
+}
+
+function normaliseNonNegativeMap(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const output = {};
+  for (const [key, amount] of Object.entries(value)) {
+    if (!key || !Number.isFinite(Number(amount))) continue;
+    output[key] = Math.max(0, Math.round(Number(amount)));
+  }
+  return output;
+}
+
+function normaliseLiabilities(value) {
+  const seen = new Set();
+  return normaliseObjectArray(value, 40).flatMap((item, index) => {
+    const id = String(item.id || `liability-${index + 1}`);
+    if (seen.has(id)) return [];
+    seen.add(id);
+    const originalPrincipal = Math.max(0, Math.round(Number(item.originalPrincipal) || 0));
+    const outstandingBalance = Math.max(
+      0,
+      Math.min(originalPrincipal || Number.MAX_SAFE_INTEGER, Math.round(Number(item.outstandingBalance) || 0)),
+    );
+    return [{
+      id,
+      programmeId: typeof item.programmeId === "string" ? item.programmeId : null,
+      originalPrincipal,
+      outstandingBalance,
+      nextPaymentDay: Math.max(1, Math.round(Number(item.nextPaymentDay) || 1)),
+      paymentAmount: Math.max(0, Math.round(Number(item.paymentAmount) || 0)),
+      status: ["active", "paid", "arrears"].includes(item.status) ? item.status : "active",
+      arrears: Math.max(0, Math.round(Number(item.arrears) || 0)),
+      settledPeriodIds: uniqueStrings(item.settledPeriodIds).slice(-120),
+    }];
+  });
+}
+
 export function validateState(candidate) {
   const defaults = createDefaultState();
   const source = candidate && typeof candidate === "object" ? candidate : {};
   const state = copyKnown(defaults, source);
-  state.schemaVersion = 9;
+  state.schemaVersion = 10;
 
   const checkedName = validateName(source.profile?.name ?? state.profile.name);
   state.profile.name = checkedName.ok ? checkedName.value : "";
@@ -351,7 +413,23 @@ export function validateState(candidate) {
     Number(source.finances?.lastTransactionId) || 0,
     ...state.finances.transactions.map((item) => Number(item.id.replace(/^tx-/, "")) || 0),
   );
+  state.finances.liabilities = normaliseLiabilities(source.finances?.liabilities);
 
+  state.career.familyId = typeof source.career?.familyId === "string"
+    ? source.career.familyId
+    : null;
+  state.career.employerId = typeof source.career?.employerId === "string"
+    ? source.career.employerId
+    : null;
+  state.career.roleIndex = Math.max(0, Math.round(Number(source.career?.roleIndex) || 0));
+  state.career.salary = Math.max(0, Math.round(Number(source.career?.salary) || 0));
+  state.career.experience = Math.max(0, Number(source.career?.experience) || 0);
+  state.career.interviewHistory = normaliseObjectArray(source.career?.interviewHistory, 40);
+  state.career.openingCooldowns = normaliseNonNegativeMap(source.career?.openingCooldowns);
+  state.career.pendingPromotion = source.career?.pendingPromotion
+    && typeof source.career.pendingPromotion === "object"
+    ? clone(source.career.pendingPromotion)
+    : null;
   state.career.performance = clamp(state.career.performance);
   state.career.boss = clamp(state.career.boss);
   state.career.coworkers = clamp(state.career.coworkers);
@@ -378,6 +456,30 @@ export function validateState(candidate) {
     : null;
   state.jobs.lastResult = source.jobs?.lastResult && typeof source.jobs.lastResult === "object"
     ? clone(source.jobs.lastResult)
+    : null;
+  state.jobs.pendingInterview = source.jobs?.pendingInterview
+    && typeof source.jobs.pendingInterview === "object"
+    ? clone(source.jobs.pendingInterview)
+    : null;
+
+  state.education.applications = normaliseObjectArray(source.education?.applications, 40);
+  state.education.active = source.education?.active && typeof source.education.active === "object"
+    ? clone(source.education.active)
+    : null;
+  state.education.completed = normaliseObjectArray(source.education?.completed, 40);
+  state.education.incomplete = normaliseObjectArray(source.education?.incomplete, 40);
+  state.education.accessModifiers.bridgeBonus = Math.max(
+    0,
+    Math.min(100, Number(source.education?.accessModifiers?.bridgeBonus) || 0),
+  );
+  state.education.accessModifiers.experienceByField = normaliseNonNegativeMap(
+    source.education?.accessModifiers?.experienceByField,
+  );
+  state.education.checkpointHistory = normaliseObjectArray(source.education?.checkpointHistory, 120);
+  state.education.settledDayIds = uniqueStrings(source.education?.settledDayIds).slice(-400);
+  state.education.lastOutcome = source.education?.lastOutcome
+    && typeof source.education.lastOutcome === "object"
+    ? clone(source.education.lastOutcome)
     : null;
 
   const people = {};
@@ -412,6 +514,18 @@ export function validateState(candidate) {
   state.garage.parking = (Array.isArray(source.garage?.parking) ? source.garage.parking : []).filter(item => item && typeof item.id === 'string' && ['home','work'].includes(item.location)).map(({id,location}) => ({id,location}));
   state.transport.preferredVehicleId = typeof source.transport?.preferredVehicleId === 'string' ? source.transport.preferredVehicleId : null;
   state.assets.ownedUpgradeIds = uniqueStrings(source.assets?.ownedUpgradeIds);
+  state.assets.items = {};
+  if (source.assets?.items && typeof source.assets.items === "object") {
+    for (const [id, item] of Object.entries(source.assets.items)) {
+      if (!item || typeof item !== "object") continue;
+      state.assets.items[id] = {
+        ...clone(item),
+        id: typeof item.id === "string" ? item.id : id,
+        name: typeof item.name === "string" ? item.name : id,
+        value: Math.max(0, Math.round(Number(item.value) || 0)),
+      };
+    }
+  }
   // These are chronological logs: repeated IDs must retain their latest position.
   state.eventHistory.headlineIds = (Array.isArray(source.eventHistory?.headlineIds) ? source.eventHistory.headlineIds : [])
     .filter((id) => typeof id === "string").slice(-40);
@@ -441,6 +555,10 @@ export function validateState(candidate) {
   state.timeline.lastSummary = source.timeline?.lastSummary && typeof source.timeline.lastSummary === "object"
     ? clone(source.timeline.lastSummary)
     : null;
+  state.timeline.educationMilestone = source.timeline?.educationMilestone
+    && typeof source.timeline.educationMilestone === "object"
+    ? clone(source.timeline.educationMilestone)
+    : null;
   state.delayedEvents = (Array.isArray(source.delayedEvents) ? source.delayedEvents : [])
     .filter((item) => item && Number.isFinite(Number(item.dueDay)) && item.eventId && item.outcomeId)
     .map((item) => ({
@@ -456,7 +574,7 @@ export function validateState(candidate) {
 }
 
 export function migrateLegacyState(candidate) {
-  if (candidate?.schemaVersion === 9) return validateState(candidate);
+  if (candidate?.schemaVersion === 10 || candidate?.schemaVersion === 9) return migrateState(candidate);
   if (candidate?.schemaVersion === 8) return migrateState(candidate);
   const state = createDefaultState();
   const source = candidate && typeof candidate === "object" ? candidate : {};
@@ -529,11 +647,31 @@ export function migrateLegacyState(candidate) {
 }
 
 export function migrateState(candidate) {
-  if (candidate?.schemaVersion === 9) return validateState(candidate);
+  if (candidate?.schemaVersion === 10) return validateState(candidate);
+  if (candidate?.schemaVersion === 9) {
+    const source = clone(candidate);
+    const migratedCareer = source.career && typeof source.career === "object"
+      ? {
+        ...source.career,
+        familyId: source.career.familyId
+          || (source.career.pathId === "office" ? "business" : null),
+      }
+      : undefined;
+    return validateState({
+      ...source,
+      schemaVersion: 10,
+      career: migratedCareer,
+      education: createDefaultState().education,
+      finances: {
+        ...(source.finances || {}),
+        liabilities: [],
+      },
+    });
+  }
   if (candidate?.schemaVersion === 8) {
     return validateState({
       ...clone(candidate),
-      schemaVersion: 9,
+      schemaVersion: 10,
       life: {
         stage: "adult",
         school: { step: "complete", choiceIds: [] },
@@ -549,12 +687,12 @@ export function migrateState(candidate) {
 
 export function saveGame(state, storage = globalThis.localStorage) {
   const validated = validateState(state);
-  storage.setItem(SAVE_KEY_V9, JSON.stringify(validated));
+  storage.setItem(SAVE_KEY_V10, JSON.stringify(validated));
   return validated;
 }
 
 export function loadGame(storage = globalThis.localStorage) {
-  const current = storage.getItem(SAVE_KEY_V9);
+  const current = storage.getItem(SAVE_KEY_V10);
   if (current !== null) {
     try {
       return { state: validateState(JSON.parse(current)), status: "loaded", recoveryMessage: "" };
@@ -573,7 +711,7 @@ export function loadGame(storage = globalThis.localStorage) {
     if (legacy === null) continue;
     try {
       const state = migrateState(JSON.parse(legacy));
-      storage.setItem(SAVE_KEY_V9, JSON.stringify(state));
+      storage.setItem(SAVE_KEY_V10, JSON.stringify(state));
       return { state, status: "migrated", recoveryMessage: "" };
     } catch {
       storage.setItem(CORRUPT_BACKUP_KEY, legacy);

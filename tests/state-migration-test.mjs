@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import {
+  SAVE_KEY_V10,
   SAVE_KEY_V9,
   SAVE_KEY_V8,
   createDefaultState,
@@ -17,7 +18,7 @@ import { ECONOMY, formatRand } from "../js/data/economy.js";
 const tests = [];
 const test = (name, run) => tests.push({ name, run });
 
-test("creates independent schema v9 state domains", () => {
+test("creates independent schema v10 state domains", () => {
   const first = createDefaultState();
   const second = createDefaultState();
   const domains = [
@@ -25,10 +26,11 @@ test("creates independent schema v9 state domains", () => {
     "relationships", "transport", "assets", "eventHistory", "eventDecks",
     "delayedEvents", "dailyState", "settings", "life",
   ];
-  assert.equal(first.schemaVersion, 9);
+  assert.equal(first.schemaVersion, 10);
   domains.forEach((domain) => assert.ok(domain in first, domain));
   first.assets.ownedUpgradeIds.push("washer");
   assert.deepEqual(second.assets.ownedUpgradeIds, []);
+  assert.equal(SAVE_KEY_V10, "one-more-day-v10");
   assert.equal(SAVE_KEY_V9, "one-more-day-v09");
   assert.equal(SAVE_KEY_V8, "one-more-day-v08");
 });
@@ -133,7 +135,7 @@ test("migrates a partial legacy life without losing recognised progress", () => 
     workers: 2,
     expansions: 1,
   });
-  assert.equal(migrated.schemaVersion, 9);
+  assert.equal(migrated.schemaVersion, 10);
   assert.equal(migrated.profile.name, "Lerato");
   assert.equal(migrated.calendar.day, 9);
   assert.equal(migrated.finances.cash, 4_250);
@@ -145,7 +147,7 @@ test("migrates a partial legacy life without losing recognised progress", () => 
   assert.ok(migrated.assets.ownedUpgradeIds.length >= 1);
 });
 
-test("normalises partial v8 data into v9 and removes duplicate owned IDs", () => {
+test("normalises partial v8 data into v10 and removes duplicate owned IDs", () => {
   const normalised = validateState({
     schemaVersion: 8,
     profile: { name: "Neo", gender: "man" },
@@ -161,7 +163,7 @@ test("normalises partial v8 data into v9 and removes duplicate owned IDs", () =>
   assert.ok(Array.isArray(normalised.delayedEvents));
 });
 
-test("loads v9 first, migrates legacy second, and preserves the legacy key", () => {
+test("loads v10 first, migrates legacy second, and preserves the legacy key", () => {
   const legacy = JSON.stringify({ name: "Anele", cash: 810, day: 4, job: "wash" });
   const storage = new MemoryStorage({ "one-more-day-v06": legacy });
   const result = loadGame(storage);
@@ -169,7 +171,7 @@ test("loads v9 first, migrates legacy second, and preserves the legacy key", () 
   assert.equal(result.state.profile.name, "Anele");
   assert.equal(result.state.finances.cash, 810);
   assert.equal(storage.getItem("one-more-day-v06"), legacy);
-  assert.equal(JSON.parse(storage.getItem(SAVE_KEY_V9)).schemaVersion, 9);
+  assert.equal(JSON.parse(storage.getItem(SAVE_KEY_V10)).schemaVersion, 10);
 
   const loadedAgain = loadGame(storage);
   assert.equal(loadedAgain.status, "loaded");
@@ -177,10 +179,10 @@ test("loads v9 first, migrates legacy second, and preserves the legacy key", () 
 });
 
 test("backs up corrupt data and returns a friendly recovery state", () => {
-  const storage = new MemoryStorage({ [SAVE_KEY_V9]: "{broken json" });
+  const storage = new MemoryStorage({ [SAVE_KEY_V10]: "{broken json" });
   const result = loadGame(storage);
   assert.equal(result.status, "corrupt");
-  assert.equal(result.state.schemaVersion, 9);
+  assert.equal(result.state.schemaVersion, 10);
   assert.match(result.recoveryMessage, /saved life/i);
   assert.equal(storage.getItem(CORRUPT_BACKUP_KEY), "{broken json");
 });
