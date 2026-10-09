@@ -64,15 +64,19 @@ test("career choices can help one work relationship while hurting another", () =
   assert.equal("promotion" in event.choices[0], false);
 });
 
-test("career promotion requires readiness and three warnings dismiss", () => {
+test("career readiness opens a promotion panel and three warnings dismiss", () => {
   let promotable = startCareer(newLife(), "office");
   promotable.career.performance = 82;
   promotable.career.readiness = 80;
+  promotable.career.experience = 30;
   promotable.stats.knowledge = 60;
   promotable.stats.reputation = 58;
+  promotable.education.completed.push({ programmeId: "office-admin-learnership", outcome: "pass" });
   const promoted = settleCareerDay(promotable, { day: 1, attendance: "present" });
-  assert.equal(promoted.state.career.role, "Administrator");
-  assert.equal(promoted.status.promotion, true);
+  assert.equal(promoted.state.career.role, "Office Junior");
+  assert.equal(promoted.status.promotion, false);
+  assert.equal(promoted.status.promotionPending, true);
+  assert.ok(promoted.state.career.pendingPromotion);
 
   let warned = startCareer(newLife(), "office");
   warned.career.warnings = [

@@ -73,6 +73,41 @@ test("severe repeated behaviour can dismiss the employee", () => {
   assert.equal(outcome.formalWarning, false);
 });
 
+test("qualifications never excuse severe repeated misconduct", () => {
+  const state = employee();
+  state.education.completed = [
+    { programmeId: "business-finance-diploma", outcome: "distinction", score: 92 },
+    { programmeId: "community-development-degree", outcome: "pass", score: 74 },
+  ];
+  state.career.performance = 88;
+  state.career.boss = 70;
+  state.career.attendanceStreak = 16;
+  state.career.warnings = [
+    { id: "w1", day: 1, reason: "one" },
+    { id: "w2", day: 2, reason: "two" },
+  ];
+  const outcome = assessWorkConsequence(state, {
+    severity: 92,
+    communication: -30,
+    random: () => 0,
+  });
+  assert.equal(outcome.type, "dismissal");
+});
+
+test("a middling incident can cost performance without a warning", () => {
+  const state = employee();
+  state.career.performance = 72;
+  state.career.boss = 70;
+  state.career.attendanceStreak = 8;
+  const outcome = assessWorkConsequence(state, {
+    severity: 38,
+    communication: 6,
+    random: () => 0.95,
+  });
+  assert.equal(outcome.type, "performance-loss");
+  assert.equal(outcome.formalWarning, false);
+});
+
 test("a risky work decision uses the escalation result instead of always issuing a warning", () => {
   const state = employee();
   const result = resolveCareerChoice(state, "career-honesty", "hide", { random: () => 0.99 });

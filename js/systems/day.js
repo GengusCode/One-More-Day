@@ -11,7 +11,7 @@ import {
   scheduleDelayedEvent,
   scheduleChoiceConsequence,
 } from "./event-deck.js";
-import { startCareer, resolveCareerChoice, settleCareerDay } from "./career.js";
+import { startCareer, resolveCareerChoice, settleCareerDay, getPromotionDecision } from "./career.js";
 import { startBusiness, resolveOwnerChoice, settleBusinessDay } from "./business.js";
 import { getTravelOptions, resolveTravel, resetDailyTransport, assignCarForDay } from "./travel.js";
 import { advanceLifeCalendar, evaluateLifeEnding, getSchoolDecision } from "./life.js";
@@ -618,6 +618,8 @@ export function getCurrentDecision(state) {
   if (schoolDecision) return schoolDecision;
   const studyDecision = getCurrentStudyDecision(state);
   if (studyDecision) return studyDecision;
+  const promotionDecision = getPromotionDecision(state);
+  if (promotionDecision) return promotionDecision;
   if (state.dailyState.phase === "path") {
     return {
       icon: "📱", kicker: "ADULT LIFE", title: "Your first opportunity is waiting",
