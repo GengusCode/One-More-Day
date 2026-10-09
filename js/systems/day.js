@@ -16,6 +16,7 @@ import { startBusiness, resolveOwnerChoice, settleBusinessDay } from "./business
 import { getTravelOptions, resolveTravel, resetDailyTransport, assignCarForDay } from "./travel.js";
 import { advanceLifeCalendar, evaluateLifeEnding, getSchoolDecision } from "./life.js";
 import { resolveJobApplication } from "./jobs.js";
+import { getCurrentStudyDecision, settleEducationDay } from "./education.js";
 
 const clone = (value) => (
   typeof structuredClone === "function" ? structuredClone(value) : JSON.parse(JSON.stringify(value))
@@ -473,6 +474,7 @@ export function advanceDay(state, { random = Math.random } = {}) {
   next = evaluateLifeEnding(next, { random });
   if (next.life.ended) return next;
   next = resetDailyState(next);
+  next = settleEducationDay(next, { day: next.calendar.day, random }).state;
   next = startDay(next, { random });
   if (milestone?.type === "birthday") next.dailyState.result = milestone.message;
   return next;
@@ -518,13 +520,18 @@ export function settleRoutineDay(state, { random = Math.random, driverMode = fal
     return {state:startDay(next,{random}),transactions:[],interrupted:true,reason:'planned-commitment'};
   }
 
+  const transactions = [];
+  const education = settleEducationDay(next, { day: next.calendar.day, random });
+  next = education.state;
+  transactions.push(...education.transactions);
+  const educationCheckpoint = education.status.checkpointDue;
+
   next = applyEffects(next, { stats: { energy: 12 } }, { source: "routine-recovery" }).state;
   const due = resolveDueEvents(next, next.calendar.day);
   next = due.state;
   next.dailyState.updates = [due.primary, ...due.updates].filter(Boolean).map(describeConsequence);
   if (due.primary) next.dailyState.result = describeConsequence(due.primary);
 
-  const transactions = [];
   let automaticChoice = null;
   if (isWorkingDay(next) && hasPath(next) && random()<.45) {
     next = assignWorkDecision(next,random);
@@ -588,7 +595,15 @@ export function settleRoutineDay(state, { random = Math.random, driverMode = fal
       : status.reason === "closed" ? "business-closed"
         : next.stats.health <= 15 ? "critical-health"
           : state.finances.cash >= 0 && next.finances.cash < 0 ? "low-cash"
-            : "";
+            : educationCheckpoint ? "study-checkpoint"
+              : "";
+  if (reason === "study-checkpoint") {
+    next.timeline.educationMilestone = {
+      day: next.calendar.day,
+      programmeId: next.education.active?.programmeId || null,
+      checkpointId: educationCheckpoint,
+    };
+  }
   if (reason && reason !== "vehicle-repossessed") next.dailyState.result = reason === "promotion"
     ? `Promotion: you are now ${next.career.role}.`
     : reason === "dismissed" ? "Your employment has ended."
@@ -601,6 +616,8 @@ export function settleRoutineDay(state, { random = Math.random, driverMode = fal
 export function getCurrentDecision(state) {
   const schoolDecision = getSchoolDecision(state);
   if (schoolDecision) return schoolDecision;
+  const studyDecision = getCurrentStudyDecision(state);
+  if (studyDecision) return studyDecision;
   if (state.dailyState.phase === "path") {
     return {
       icon: "📱", kicker: "ADULT LIFE", title: "Your first opportunity is waiting",

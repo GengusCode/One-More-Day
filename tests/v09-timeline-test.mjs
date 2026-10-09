@@ -6,7 +6,7 @@ import { applyForJob } from "../js/systems/jobs.js";
 import { canFastForward, fastForward } from "../js/systems/timeline.js";
 
 const state = createDefaultState();
-assert.deepEqual(state.timeline, { lastSummary: null, settledDayIds: [] });
+assert.deepEqual(state.timeline, { lastSummary: null, settledDayIds: [], educationMilestone: null });
 
 function completeAdult(name = "Neo") {
   const life = createNewLife({ name, gender: "man" });

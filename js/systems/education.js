@@ -437,3 +437,213 @@ export function settleEducationDay(state, { day = state.calendar?.day, random = 
     },
   };
 }
+
+function clampStudy(value) {
+  return Math.max(0, Math.min(100, Number(value) || 0));
+}
+
+function nextDueCheckpoint(active, day) {
+  if (!active?.checkpointDays) return null;
+  const resolved = new Set(active.resolvedCheckpointIds || []);
+  for (const checkpointId of ["strategy", "pressure", "assessment"]) {
+    if (resolved.has(checkpointId)) continue;
+    const checkpointDay = Number(active.checkpointDays[checkpointId]);
+    if (Number.isFinite(checkpointDay) && day >= checkpointDay) return checkpointId;
+  }
+  return null;
+}
+
+export function getNextStudyCheckpointDay(state) {
+  const active = state.education?.active;
+  if (!active) return null;
+  const resolved = new Set(active.resolvedCheckpointIds || []);
+  const currentDay = Math.max(1, Math.round(Number(state.calendar?.day) || 1));
+  for (const checkpointId of ["strategy", "pressure", "assessment"]) {
+    if (resolved.has(checkpointId)) continue;
+    const checkpointDay = Number(active.checkpointDays?.[checkpointId]);
+    if (Number.isFinite(checkpointDay)) return Math.max(currentDay, checkpointDay);
+  }
+  return null;
+}
+
+export function getCurrentStudyDecision(state) {
+  const active = state.education?.active;
+  if (!active) return null;
+  const programme = getProgrammeById(active.programmeId);
+  if (!programme) {
+    return {
+      icon: "⚠️",
+      kicker: "STUDY UPDATE",
+      title: "This programme is unavailable",
+      text: "Close the old record safely and choose another route.",
+      checkpointId: "invalid",
+      choices: [{
+        id: "close-invalid",
+        label: "Close this record",
+        detail: "Your other life progress will stay safe.",
+        action: "CHOOSE_STUDY",
+      }],
+    };
+  }
+
+  const checkpointId = nextDueCheckpoint(active, Number(state.calendar?.day) || 1);
+  if (!checkpointId) return null;
+  const decision = programme.decisions?.[checkpointId];
+  if (!decision) return null;
+  return {
+    ...decision,
+    checkpointId,
+    programmeId: programme.id,
+    programmeTitle: programme.title,
+    choices: decision.choices.map((choice) => ({ ...choice, action: "CHOOSE_STUDY" })),
+  };
+}
+
+function assessmentScore(state, active, roll) {
+  const score = (Number(state.stats?.knowledge) || 0) * 0.28
+    + (Number(state.stats?.energy) || 0) * 0.08
+    + (Number(active.focus) || 0) * 0.24
+    + (Number(active.attendance) || 0) * 0.16
+    + (Number(active.experience) || 0) * 0.14
+    + (Number(active.integrity) || 0) * 0.1
+    + (Math.max(0, Math.min(1, Number(roll) || 0)) * 10 - 5);
+  return Math.max(0, Math.min(100, Math.round(score)));
+}
+
+function outcomeForScore(score) {
+  if (score >= 80) return "distinction";
+  if (score >= 58) return "pass";
+  if (score >= 38) return "rewrite";
+  if (score >= 18) return "incomplete";
+  return "withdrawal";
+}
+
+function applyStudyModifiers(active, modifiers = {}) {
+  for (const key of ["focus", "attendance", "integrity", "experience"]) {
+    active[key] = clampStudy((Number(active[key]) || 0) + (Number(modifiers[key]) || 0));
+  }
+}
+
+export function resolveStudyDecision(state, choiceId, { random = Math.random } = {}) {
+  const decision = getCurrentStudyDecision(state);
+  if (!decision) {
+    return { state, ok: false, status: { reason: "no-study-decision", outcome: null } };
+  }
+  if (decision.checkpointId === "invalid") {
+    if (choiceId !== "close-invalid") {
+      return { state, ok: false, status: { reason: "invalid-choice", outcome: null } };
+    }
+    const next = clone(state);
+    const invalid = next.education.active;
+    next.education.incomplete.push({
+      programmeId: invalid?.programmeId || "unknown",
+      outcome: "unavailable",
+      day: Math.max(1, Math.round(Number(next.calendar?.day) || 1)),
+    });
+    next.education.lastOutcome = next.education.incomplete.at(-1);
+    next.education.active = null;
+    next.timeline.educationMilestone = null;
+    return { state: next, ok: true, status: { reason: "invalid-programme-closed", outcome: "unavailable" } };
+  }
+
+  const choice = decision.choices.find((item) => item.id === choiceId);
+  if (!choice) return { state, ok: false, status: { reason: "invalid-choice", outcome: null } };
+
+  let next = applyEffects(
+    state,
+    choice.effects || {},
+    { source: `education:${decision.programmeId}:${decision.checkpointId}`, label: choice.label },
+  ).state;
+  const active = next.education.active;
+  applyStudyModifiers(active, choice.modifiers);
+  const day = Math.max(1, Math.round(Number(next.calendar?.day) || 1));
+  const attempt = next.education.checkpointHistory
+    .filter((item) => item.programmeId === active.programmeId && item.checkpointId === decision.checkpointId)
+    .length + 1;
+  const history = {
+    id: `${active.id}:${decision.checkpointId}:${attempt}`,
+    programmeId: active.programmeId,
+    checkpointId: decision.checkpointId,
+    choiceId,
+    day,
+  };
+
+  if (decision.checkpointId !== "assessment") {
+    active.resolvedCheckpointIds = [...new Set([...(active.resolvedCheckpointIds || []), decision.checkpointId])];
+    next.education.checkpointHistory.push({ ...history, outcome: "resolved" });
+    next.timeline.educationMilestone = null;
+    return {
+      state: next,
+      ok: true,
+      status: { reason: "checkpoint-resolved", checkpointId: decision.checkpointId, outcome: null },
+    };
+  }
+
+  const roll = Number(random());
+  const score = assessmentScore(next, active, roll);
+  const outcome = outcomeForScore(score);
+  const programme = getProgrammeById(active.programmeId);
+  next.education.checkpointHistory.push({ ...history, outcome, score });
+  next.education.lastOutcome = {
+    programmeId: active.programmeId,
+    outcome,
+    score,
+    day,
+  };
+
+  if (choice.risky && roll < 0.35) {
+    next.delayedEvents.push({
+      dueDay: day + 3,
+      eventId: "study-integrity",
+      outcomeId: `${active.id}:integrity:${attempt}`,
+      severity: 2,
+      payload: {
+        cause: "A shortcut from your assessment is being reviewed.",
+        effects: { stats: { reputation: -8, happiness: -4 } },
+      },
+    });
+  }
+
+  if (outcome === "rewrite") {
+    active.rewriteCount = Math.max(0, Number(active.rewriteCount) || 0) + 1;
+    active.checkpointDays.assessment = day + 7;
+    active.endDay = day + 7;
+    active.focus = clampStudy(active.focus - 4);
+    next.timeline.educationMilestone = null;
+    return { state: next, ok: true, status: { reason: "rewrite-required", outcome, score } };
+  }
+
+  const result = {
+    programmeId: active.programmeId,
+    fundingId: active.fundingId,
+    outcome,
+    score,
+    completedDay: day,
+    experience: Math.round(Number(active.experience) || 0),
+  };
+  if (["distinction", "pass"].includes(outcome)) {
+    next.education.completed.push(result);
+    const currentExperience = Number(next.education.accessModifiers.experienceByField[programme.field]) || 0;
+    next.education.accessModifiers.experienceByField[programme.field] = Math.max(
+      currentExperience,
+      Math.round(Number(active.experience) || 0) + (outcome === "distinction" ? 12 : 8),
+    );
+    if (programme.id === BRIDGE_ID) {
+      next.education.accessModifiers.bridgeBonus = Math.max(
+        Number(next.education.accessModifiers.bridgeBonus) || 0,
+        outcome === "distinction" ? 22 : 18,
+      );
+    }
+    next.stats.knowledge = clampStudy(next.stats.knowledge + (outcome === "distinction" ? 8 : 5));
+  } else {
+    next.education.incomplete.push({ ...result, day });
+    const currentExperience = Number(next.education.accessModifiers.experienceByField[programme.field]) || 0;
+    next.education.accessModifiers.experienceByField[programme.field] = Math.max(
+      currentExperience,
+      Math.round((Number(active.experience) || 0) * 0.5),
+    );
+  }
+  next.education.active = null;
+  next.timeline.educationMilestone = null;
+  return { state: next, ok: true, status: { reason: "assessment-complete", outcome, score } };
+}
