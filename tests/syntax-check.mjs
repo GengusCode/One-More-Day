@@ -42,5 +42,8 @@ for (const modulePath of [
 }
 assert.match(index, /data-game-version="0\.10"/);
 assert.match(index, /href="v10-level-up\.css(?:\?v=[\w-]+)?"/);
+assert.match(index, /src="js\/app\.js\?v=[\w-]+"/);
+assert.match(index, /"\.\/js\/core\/state\.js"\s*:\s*"\.\/js\/core\/state\.js\?v=[\w-]+"/);
+assert.match(index, /"\.\/js\/systems\/day\.js"\s*:\s*"\.\/js\/systems\/day\.js\?v=[\w-]+"/);
 assert.match(readme, /SA Edition v0\.10/);
 console.log("production syntax: " + visited.size + " ES modules parsed");

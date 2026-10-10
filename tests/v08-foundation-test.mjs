@@ -64,7 +64,7 @@ test("secondary systems stay in phone apps", () => {
 test("the production entry references existing local modules and styles", async () => {
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
   assert.match(html, /id="app"/);
-  assert.match(html, /type="module"\s+src="js\/app\.js"/);
+  assert.match(html, /type="module"\s+src="js\/app\.js(?:\?v=[\w-]+)?"/);
   assert.match(html, /href="v10-level-up\.css(?:\?v=[\w-]+)?"/);
   await access(new URL("../js/app.js", import.meta.url));
   await access(new URL("../v10-level-up.css", import.meta.url));

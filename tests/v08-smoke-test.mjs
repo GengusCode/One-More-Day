@@ -10,7 +10,7 @@ const readme = await readFile(file("README.md"), "utf8");
 const credits = await readFile(file("assets/credits.md"), "utf8");
 const css = await readFile(file("v09-life-begins.css"), "utf8");
 
-assert.match(index, /type="module"\s+src="js\/app\.js"/);
+assert.match(index, /type="module"\s+src="js\/app\.js(?:\?v=[\w-]+)?"/);
 assert.match(app, /createDefaultState/);
 assert.doesNotMatch(app, /removeItem\(SAVE_KEY_V9\)/);
 assert.match(index, /href="v10-level-up\.css(?:\?v=[\w-]+)?"/);

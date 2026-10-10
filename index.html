@@ -11,6 +11,23 @@
 <body>
   <a class="skip-link" href="#app">Skip to the game</a>
   <main id="app" class="app-root" tabindex="-1"></main>
-  <script type="module" src="js/app.js"></script>
+  <script type="importmap">
+    {
+      "imports": {
+        "./js/core/state.js": "./js/core/state.js?v=20261010-levelup2",
+        "./js/core/version.js": "./js/core/version.js?v=20261010-levelup2",
+        "./js/data/education.js": "./js/data/education.js?v=20261010-levelup2",
+        "./js/data/jobs.js": "./js/data/jobs.js?v=20261010-levelup2",
+        "./js/systems/career.js": "./js/systems/career.js?v=20261010-levelup2",
+        "./js/systems/day.js": "./js/systems/day.js?v=20261010-levelup2",
+        "./js/systems/education.js": "./js/systems/education.js?v=20261010-levelup2",
+        "./js/systems/jobs.js": "./js/systems/jobs.js?v=20261010-levelup2",
+        "./js/systems/timeline.js": "./js/systems/timeline.js?v=20261010-levelup2",
+        "./js/ui/phone.js": "./js/ui/phone.js?v=20261010-levelup2",
+        "./js/ui/render.js": "./js/ui/render.js?v=20261010-levelup2"
+      }
+    }
+  </script>
+  <script type="module" src="js/app.js?v=20261010-levelup2"></script>
 </body>
 </html>
