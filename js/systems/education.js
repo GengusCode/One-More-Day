@@ -77,7 +77,7 @@ export function getStudyEligibility(state, programmeId) {
       unlockHint: "Start a new life to study again.",
     };
   }
-  if (!state.dailyState?.complete) {
+  if (!state.dailyState?.complete && state.dailyState?.phase !== "path") {
     return {
       eligible: false,
       reason: "Finish today's decision before enrolling.",
@@ -151,8 +151,10 @@ export function getStudyEligibility(state, programmeId) {
 
 function availableFundingIds(state, programme) {
   const isWorking = Boolean(state.career?.active || state.business?.active);
+  const hasPendingWork = Boolean(state.jobs?.activeApplicationId || state.jobs?.pendingInterview);
   return programme.fundingIds.filter((fundingId) => {
     if (fundingId === "existing-work") return isWorking;
+    if (["part-time", "paid-learnership"].includes(fundingId) && hasPendingWork) return false;
     if (fundingId === "part-time") return !isWorking;
     return true;
   });
@@ -217,6 +219,13 @@ function fundingConflict(state, programme, fundingId) {
     return { status: "invalid-funding", reason: "That funding option is not available for this programme." };
   }
   const isWorking = Boolean(state.career?.active || state.business?.active);
+  const hasPendingWork = Boolean(state.jobs?.activeApplicationId || state.jobs?.pendingInterview);
+  if (["part-time", "paid-learnership"].includes(fundingId) && hasPendingWork) {
+    return {
+      status: "job-application-conflict",
+      reason: "Finish or cancel your pending job application or interview before choosing this funding option.",
+    };
+  }
   if (fundingId === "existing-work" && !isWorking) {
     return { status: "funding-unavailable", reason: "You need an active job or business for this option." };
   }
@@ -297,6 +306,11 @@ export function enrolInProgramme(state, { programmeId, fundingId } = {}, { rando
 
   next.education.active = active;
   next.education.applications.push(applicationRecord(next, programme.id, fundingId, "accepted"));
+  if (next.dailyState.phase === "path") {
+    next.dailyState.phase = "complete";
+    next.dailyState.complete = true;
+    next.dailyState.result = `${programme.title} is your first adult path. Your study plan starts now.`;
+  }
   next.finances.netWorth = calculateNetWorth(next);
   return { state: next, transactions, ok: true, status: "enrolled", reason: "" };
 }
@@ -467,6 +481,7 @@ export function getNextStudyCheckpointDay(state) {
 }
 
 export function getCurrentStudyDecision(state) {
+  if (state.life?.ended || state.life?.stage === "ended") return null;
   const active = state.education?.active;
   if (!active) return null;
   const programme = getProgrammeById(active.programmeId);
@@ -608,6 +623,12 @@ export function resolveStudyDecision(state, choiceId, { random = Math.random } =
     active.rewriteCount = Math.max(0, Number(active.rewriteCount) || 0) + 1;
     active.checkpointDays.assessment = day + 7;
     active.endDay = day + 7;
+    const liability = [...(next.finances?.liabilities || [])].reverse().find((item) => (
+      item.programmeId === active.programmeId
+      && item.status === "active"
+      && Number(item.outstandingBalance) > 0
+    ));
+    if (liability) liability.nextPaymentDay = active.endDay + 30;
     active.focus = clampStudy(active.focus - 4);
     next.timeline.educationMilestone = null;
     return { state: next, ok: true, status: { reason: "rewrite-required", outcome, score } };
@@ -643,6 +664,12 @@ export function resolveStudyDecision(state, choiceId, { random = Math.random } =
       Math.round((Number(active.experience) || 0) * 0.5),
     );
   }
+  const liability = [...(next.finances?.liabilities || [])].reverse().find((item) => (
+    item.programmeId === active.programmeId
+    && item.status === "active"
+    && Number(item.outstandingBalance) > 0
+  ));
+  if (liability) liability.nextPaymentDay = day + 30;
   next.education.active = null;
   next.timeline.educationMilestone = null;
   return { state: next, ok: true, status: { reason: "assessment-complete", outcome, score } };

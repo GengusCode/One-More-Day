@@ -169,6 +169,7 @@ function studyApp(state) {
   const completed = state.education?.completed || [];
   if (active) {
     const programme = getProgrammeById(active.programmeId);
+    const funding = getFundingById(active.fundingId);
     const currentDay = Math.max(1, Number(state.calendar?.day) || 1);
     const total = Math.max(1, Number(active.endDay) - Number(active.startDay));
     const elapsed = Math.max(0, Math.min(total, currentDay - Number(active.startDay)));
@@ -181,7 +182,7 @@ function studyApp(state) {
         programmeId: active.programmeId,
         title: programme?.title || "Active programme",
         icon: programme?.icon || "🎓",
-        badge: `${progress}% complete`,
+        badge: `${progress}% · ${funding?.title || "Funding confirmed"}`,
         text: checkpointDay === null
           ? `Day ${elapsed} of ${total}. Your final result is being prepared.`
           : `Day ${elapsed} of ${total}. Next checkpoint: day ${checkpointDay}. Focus ${Math.round(active.focus || 0)} · Attendance ${Math.round(active.attendance || 0)}.`,

@@ -1,66 +1,57 @@
-# ONE MORE DAY — SA Edition v0.9
+# ONE MORE DAY — SA Edition v0.10
 
-A mobile-first South African life and money game about finishing school, finding a path, building work or a business, handling everyday chaos, and playing a complete life one meaningful choice at a time.
+A mobile-first South African life and money game about finishing school, finding a route into work, building a career or owner-operated business, and living with one meaningful choice at a time.
 
 ## Play it
 
-Open `index.html` in a modern browser, or serve this folder with a simple static server such as VS Code Live Server. There is no install, account, package download, or build step.
+Play the public build at [genguscode.github.io/One-More-Day](https://genguscode.github.io/One-More-Day/).
 
-Progress saves in the current browser. v0.9 uses `one-more-day-v09`. Existing v0.8 and v0.6 saves migrate into adult life without replaying the school opening, and the original older save remains untouched for rollback.
+For a local copy, download the repository and open `index.html` in a modern browser. A simple static server such as VS Code Live Server is recommended. There is no install, account, package download, or build step.
 
-## Included in v0.9 — Life Begins
+Progress saves in the current browser under `one-more-day-v10`. Existing v0.9, v0.8, and v0.6 saves migrate forward without replaying school or inventing qualifications and debt; older saves remain untouched for rollback.
 
-### Core gameplay patch — 30 September 2026
+## Included in v0.10 — Level Up
 
-- Event decks and chronological cooldown histories survive saving and reloading.
-- Headline, transport and work situations rotate separately, with up to ten recent eligible scenarios protected from immediate reuse.
-- Ten additional everyday scenarios and four work decisions vary by age, business type, staffing and weekend availability.
-- Health, happiness, knowledge, social and reputation appear above the current decision; relationships stay in the phone.
-- All decision buttons use the same neutral style.
-- Stock purchases and discounts cost money; paid side jobs describe the work and payment. Daily salary and business earnings appear as separate end-of-day income explanations.
-- Existing v0.9 saves continue using the same save key and schema.
-
-The chase redesign, business staff limits and gambling app are separate follow-up work.
-
-- A short final-day-of-school opening: last morning, final exam, result, school ending, and first adult opportunity
-- Four seeded starter people—guardian, friend, classmate, and mentor—with different names, traits, reactions, and stable relationships in every save
-- A bright, uncluttered mobile play screen focused on one decision at a time
-- An interactive phone with Jobs, Transport, Business, People, Life, and Time apps
-- Compact job applications plus owner-operated car-wash and buy-and-resell startup entry
-- One-week and one-month fast-forwarding that settles routine income only once and stops for important moments
-- Birthdays, later life from age 60, health-influenced endings from age 70, and deterministic completion at age 100
-- A respectful final summary covering work, relationships, net worth, and a memorable achievement
-- All stable v0.8 systems: career progression, nuanced warning/dismissal rules, scalable businesses, transport choices, South African daily events, money feedback, and the three-lane phone-theft chase
+- A final school test with weak, pass, and strong results—and recoverable routes after a weak result
+- Ten short study routes: bridge, learnership, occupational, diploma, self-taught, and university-style options
+- Personal payment, bursaries, study loans, current work, part-time work, and paid learnership funding
+- Three meaningful study checkpoints covering strategy, pressure, and assessment, with rewrite and recovery outcomes
+- Five career families with five roles each: Trades, Technology, Business, Hospitality, and Community
+- Rotating job openings, referrals, delayed application replies, interactive interviews, rejection cooldowns, and promotion panels
+- A nuanced work discipline ladder where context can lead to no action, performance loss, a verbal warning, a written warning, or dismissal for serious/repeated behaviour
+- A cleaner seven-app phone launcher: Jobs, Study, Transport, Business, People, Life, and Time
+- Bank and Betway preserved inside Life → Money & games, keeping the home screen uncluttered
+- A compact résumé, qualification record, study progress, debt visibility, and one-tap travel to the next study checkpoint
+- All v0.9 systems: generated starter people, aging and life endings, one-week/one-month/year skips, scalable businesses, South African daily events, vehicle choices, and the three-lane phone-theft chase
 - Responsive controls, keyboard support, reduced-motion fallbacks, save migration, and GitHub Pages compatibility
 
 ## Project structure
 
 ```text
-index.html                    Production game entry
-v09-life-begins.css           Bright v0.9 interface and phone styles
-v08-sa-edition.css            Stable v0.8 base and runner styles
-js/core/state.js              Schema 9, validation, saves and migration
-js/data/                      Economy, event, school, job and people content
-js/systems/                   Life, day, jobs, timeline and v0.8 simulations
-js/minigames/                 Fair seeded phone-theft runner
-js/ui/                        Rendering, phone model and money feedback
-tests/                        Logic, migration, syntax and production checks
+index.html                    Production game entry (schema/version 0.10)
+v10-level-up.css              v0.10 colour, motion, phone and Study polish
+v09-life-begins.css           Stable v0.9 interface base
+v08-sa-edition.css            Stable runner and simulation base
+js/core/state.js              Schema 10, validation, saves and migrations
+js/data/education.js          Ten programmes, funding and study decisions
+js/data/jobs.js               Five career families and employer cultures
+js/systems/education.js       Eligibility, enrolment, finance and outcomes
+js/systems/jobs.js            Openings, applications, referrals and interviews
+js/systems/career.js          Career settlement, warnings and promotions
+js/systems/timeline.js        Week/month/year and study-checkpoint skips
+js/minigames/                 Seeded phone-theft runner
+js/ui/                        Main renderer, phone apps and money feedback
+tests/                        Logic, migration, integration and release checks
 assets/credits.md             Cover-image attribution
 ```
 
 ## Run the checks
 
-Run each `.mjs` file in `tests/` with Node.js. The suite covers the v0.8 foundation and the complete v0.9 school, people, phone, timeline, aging, migration, and ending flows.
-
-```sh
-for test_file in tests/*.mjs; do node --experimental-vm-modules "$test_file" || exit 1; done
-```
-
-The VM flag is required for `syntax-check.mjs`.
+Node.js is only needed for development checks. Run each `.mjs` file in `tests/`; run `syntax-check.mjs` with Node's `--experimental-vm-modules` option. The suite covers the v0.7–v0.10 regressions, schema migration, education finance, study outcomes, jobs, interviews, promotion panels, end-to-end progression, syntax, and production entry files.
 
 ## GitHub Pages
 
-Push the repository to GitHub, then select **Settings → Pages → Deploy from a branch → main / root**. GitHub publishes the game at the repository Pages address after its workflow finishes.
+Push the repository to GitHub, then choose **Settings → Pages → Deploy from a branch → main / root**. GitHub publishes the static game after its Pages workflow completes. No secrets, server, or build command are required.
 
 ## Cover image attribution
 

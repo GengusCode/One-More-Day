@@ -31,6 +31,13 @@ function hasActivePath(state) {
   return Boolean(state.career?.active || state.business?.active);
 }
 
+function studyOccupiesWorkPath(state) {
+  return Boolean(
+    state.education?.active
+    && ["part-time", "paid-learnership"].includes(state.education.active.fundingId),
+  );
+}
+
 function getFamily(id) {
   return CAREER_FAMILIES.find((family) => family.id === id) || null;
 }
@@ -164,7 +171,7 @@ function addStableReferral(state, openings) {
 export function getAvailableJobs(state, { limit = 3 } = {}) {
   if (state.life?.stage === "school-finale" || state.life?.ended) return [];
   if (state.jobs?.activeApplicationId || state.jobs?.pendingInterview) return [];
-  if (hasActivePath(state)) return [];
+  if (hasActivePath(state) || studyOccupiesWorkPath(state)) return [];
 
   const safeLimit = Math.max(1, Math.min(30, Math.round(Number(limit) || 3)));
   const careers = careerOpenings(state);
@@ -313,6 +320,7 @@ function pendingRole(state) {
 }
 
 export function getInterviewDecision(state) {
+  if (state.life?.ended || state.life?.stage === "ended") return null;
   const { pending, family, role } = pendingRole(state);
   if (!pending) return null;
   if (!family || !role) {
@@ -337,6 +345,12 @@ export function getInterviewDecision(state) {
 }
 
 export function resolveInterview(state, choiceId, { random = Math.random } = {}) {
+  if (state.life?.ended || state.life?.stage === "ended") {
+    return { state, ok: false, status: { accepted: false, reason: "life-ended" } };
+  }
+  if (studyOccupiesWorkPath(state)) {
+    return { state, ok: false, status: { accepted: false, reason: "study-work-conflict" } };
+  }
   const { pending, family, role } = pendingRole(state);
   if (!pending || !family || !role) {
     if (choiceId !== "close-invalid" || !state.jobs?.pendingInterview) {
@@ -372,7 +386,10 @@ export function resolveInterview(state, choiceId, { random = Math.random } = {})
     innovative: "ask-good-question",
   }[employer.id];
   const cultureBonus = cultureChoice === choiceId ? 5 : 0;
-  const dismissalPenalty = state.career?.dismissed ? 8 : 0;
+  const dismissalPenalty = state.career?.dismissed
+    || state.career?.conductHistory?.some((entry) => entry.outcome === "dismissal")
+    ? 8
+    : 0;
   const score = (access.eligible ? 15 : -20)
     + (Number(state.life?.examResult?.score) || 0) * 0.1
     + (Number(state.stats?.knowledge) || 0) * 0.15

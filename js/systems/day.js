@@ -355,11 +355,11 @@ export function startDay(state, { random = Math.random } = {}) {
     next = jobResult.state;
     if (jobResult.resolved) next.dailyState.result = next.jobs.lastResult?.message || next.dailyState.result;
   }
-  if (!hasPath(next)) {
+  if (!hasPath(next) && !next.education?.active) {
     next.dailyState.phase = "path";
     return next;
   }
-  next.dailyState.needsTravel = isWorkingDay(next);
+  next.dailyState.needsTravel = isWorkingDay(next) && hasPath(next);
   return prepareActivity(next, random);
 }
 
@@ -461,7 +461,11 @@ export function resolveUnavailableMinigame(state) {
 }
 
 export function canAdvanceDay(state) {
-  return state.dailyState.phase === "complete" && state.dailyState.complete === true;
+  if (state.dailyState.phase !== "complete" || state.dailyState.complete !== true) return false;
+  return !getSchoolDecision(state)
+    && !getInterviewDecision(state)
+    && !getCurrentStudyDecision(state)
+    && !getPromotionDecision(state);
 }
 
 export function advanceDay(state, { random = Math.random } = {}) {
@@ -495,11 +499,16 @@ export function settleRoutineDay(state, { random = Math.random, driverMode = fal
   }
   next = resetDailyState(next);
   next = resetDailyTransport(next, next.calendar.day);
+  const transactions = [];
+  const education = settleEducationDay(next, { day: next.calendar.day, random });
+  next = education.state;
+  transactions.push(...education.transactions);
+  const educationCheckpoint = education.status.checkpointDue;
 
   if (milestone?.type === "birthday") {
     const interruptedState = startDay(next, { random });
     interruptedState.dailyState.result = milestone.message;
-    return { state: interruptedState, transactions: [], interrupted: true, reason: "birthday" };
+    return { state: interruptedState, transactions, interrupted: true, reason: "birthday" };
   }
 
   const highImpactDue = next.delayedEvents
@@ -510,21 +519,15 @@ export function settleRoutineDay(state, { random = Math.random, driverMode = fal
     const interruptedState = startDay(next, { random });
     return {
       state: interruptedState,
-      transactions: [],
+      transactions,
       interrupted: true,
       reason: highImpactDue.eventId === "job-application" ? "job-result" : "important-event",
     };
   }
 
   if (dueActivity(next)) {
-    return {state:startDay(next,{random}),transactions:[],interrupted:true,reason:'planned-commitment'};
+    return {state:startDay(next,{random}),transactions,interrupted:true,reason:'planned-commitment'};
   }
-
-  const transactions = [];
-  const education = settleEducationDay(next, { day: next.calendar.day, random });
-  next = education.state;
-  transactions.push(...education.transactions);
-  const educationCheckpoint = education.status.checkpointDue;
 
   next = applyEffects(next, { stats: { energy: 12 } }, { source: "routine-recovery" }).state;
   const due = resolveDueEvents(next, next.calendar.day);
@@ -590,13 +593,14 @@ export function settleRoutineDay(state, { random = Math.random, driverMode = fal
   next = applyEffects(next, { stats: { energy: -3, happiness: next.calendar.day % 30 === 0 ? -1 : 0 } }, { source: "routine-day" }).state;
   next = finishDay(next);
   const repossessed = next.garage.vehicles.some(v => v.status === "repossessed" && state.garage.vehicles.find(old => old.id === v.id)?.status === "owned");
-  const reason = repossessed ? "vehicle-repossessed" : status.promotion ? "promotion"
-    : status.dismissed ? "dismissed"
-      : status.reason === "closed" ? "business-closed"
-        : next.stats.health <= 15 ? "critical-health"
-          : state.finances.cash >= 0 && next.finances.cash < 0 ? "low-cash"
-            : educationCheckpoint ? "study-checkpoint"
-              : "";
+  const reason = repossessed ? "vehicle-repossessed" : status.promotionPending ? "promotion-panel"
+    : status.promotion ? "promotion"
+      : status.dismissed ? "dismissed"
+        : status.reason === "closed" ? "business-closed"
+          : next.stats.health <= 15 ? "critical-health"
+            : state.finances.cash >= 0 && next.finances.cash < 0 ? "low-cash"
+              : educationCheckpoint ? "study-checkpoint"
+                : "";
   if (reason === "study-checkpoint") {
     next.timeline.educationMilestone = {
       day: next.calendar.day,
@@ -606,14 +610,17 @@ export function settleRoutineDay(state, { random = Math.random, driverMode = fal
   }
   if (reason && reason !== "vehicle-repossessed") next.dailyState.result = reason === "promotion"
     ? `Promotion: you are now ${next.career.role}.`
-    : reason === "dismissed" ? "Your employment has ended."
-      : reason === "business-closed" ? "Your business has closed."
-        : reason === "critical-health" ? "Your health needs your attention."
-          : "Your cash has dropped below zero.";
+    : reason === "promotion-panel" ? "A promotion panel is ready."
+      : reason === "dismissed" ? "Your employment has ended."
+        : reason === "business-closed" ? "Your business has closed."
+          : reason === "critical-health" ? "Your health needs your attention."
+            : reason === "study-checkpoint" ? "A study checkpoint is ready."
+              : "Your cash has dropped below zero.";
   return { state: next, transactions, automaticChoice, interrupted: Boolean(reason), reason };
 }
 
 export function getCurrentDecision(state) {
+  if (state.life?.ended || state.life?.stage === "ended") return null;
   const schoolDecision = getSchoolDecision(state);
   if (schoolDecision) return schoolDecision;
   const interviewDecision = getInterviewDecision(state);

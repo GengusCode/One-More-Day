@@ -101,8 +101,8 @@ function runTimeline(state, requestedDays, {
     next.timeline.settledDayIds = [...next.timeline.settledDayIds, upcomingDayId].slice(-400);
 
     if (!result.interrupted) {
-      if (next.jobs?.pendingInterview) {
-        interruptionReason = "job-result";
+      if (next.jobs?.pendingInterview || next.career?.pendingPromotion) {
+        interruptionReason = next.jobs?.pendingInterview ? "job-result" : "promotion-panel";
         break;
       }
       continue;
@@ -115,14 +115,15 @@ function runTimeline(state, requestedDays, {
     const mustStop = next.life.ended
       || result.reason === "job-result"
       || result.reason === "study-checkpoint"
+      || result.reason === "promotion-panel"
       || stopOnAnyInterruption;
     if (mustStop) {
       interruptionReason = next.life.ended ? "life-ending" : result.reason;
       break;
     }
     next = finishInterruptedDay(next, { random, automaticChoices });
-    if (next.jobs?.pendingInterview) {
-      interruptionReason = "job-result";
+    if (next.jobs?.pendingInterview || next.career?.pendingPromotion) {
+      interruptionReason = next.jobs?.pendingInterview ? "job-result" : "promotion-panel";
       break;
     }
   }

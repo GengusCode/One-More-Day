@@ -5,6 +5,7 @@ import { SourceTextModule } from "node:vm";
 const root = new URL("../", import.meta.url);
 const visited = new Set();
 const readme = await readFile(new URL("README.md", root), "utf8");
+const index = await readFile(new URL("index.html", root), "utf8");
 
 function localImports(source) {
   return [...source.matchAll(/(?:import|export)\s+(?:[^"']+?\s+from\s+)?["'](\.[^"']+)["']/g)]
@@ -28,14 +29,18 @@ assert.ok(visited.has(new URL("js/minigames/tap-thief.js", root).href));
 for (const modulePath of [
   "js/data/life.js",
   "js/data/jobs.js",
+  "js/data/education.js",
   "js/data/people.js",
   "js/systems/life.js",
   "js/systems/jobs.js",
+  "js/systems/education.js",
   "js/systems/people.js",
   "js/systems/timeline.js",
   "js/ui/phone.js",
 ]) {
   assert.ok(visited.has(new URL(modulePath, root).href), modulePath);
 }
-assert.match(readme, /SA Edition v0\.9/);
+assert.match(index, /data-game-version="0\.10"/);
+assert.match(index, /href="v10-level-up\.css(?:\?v=[\w-]+)?"/);
+assert.match(readme, /SA Edition v0\.10/);
 console.log("production syntax: " + visited.size + " ES modules parsed");

@@ -51,15 +51,12 @@ export function startCareer(state, familyId = "business", { roleIndex = 0, emplo
     role: roles[index].name,
     salary: roles[index].salary,
     experience: 0,
-    interviewHistory: [],
-    openingCooldowns: {},
     pendingPromotion: null,
     performance: 50,
     boss: 50,
     coworkers: 50,
     warnings: [],
     verbalWarnings: [],
-    conductHistory: [],
     readiness: 0,
     recentDecisionIds: [],
     attendanceStreak: 0,
@@ -193,6 +190,7 @@ const PROMOTION_CHOICES = Object.freeze([
 ]);
 
 export function getPromotionDecision(state) {
+  if (state.life?.ended || state.life?.stage === "ended") return null;
   const pending = state.career?.pendingPromotion;
   if (!pending) return null;
   const family = getFamily(pending.familyId || state.career.familyId);
@@ -287,6 +285,12 @@ export function settleCareerDay(state, { day = state.calendar.day, attendance = 
   const status = { duplicate: false, promotion: false, promotionPending: false, dismissed: false };
   if (!next.career.active || next.career.dismissed) return { state: next, transactions: [], status };
   if (next.career.warnings.length >= 3) {
+    next.career.conductHistory = [...next.career.conductHistory, {
+      id: `warning-dismissal-${day}-${next.career.conductHistory.length + 1}`,
+      day,
+      outcome: "dismissal",
+      reason: "Repeated written warnings",
+    }].slice(-12);
     next.career.active = false;
     next.career.dismissed = true;
     status.dismissed = true;
