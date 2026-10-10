@@ -6,13 +6,17 @@ import { formatRand, ECONOMY } from "../data/economy.js";
 import { BUSINESS_UPGRADES, getStaffLimit, getExpansionOffer, canHireManager } from "../systems/business.js";
 import { getAvailableJobs } from "../systems/jobs.js";
 import { canFastForward } from "../systems/timeline.js";
+import { getNextStudyCheckpointDay, getStudyOptions } from "../systems/education.js";
+import { getFundingById, getProgrammeById } from "../data/education.js";
 
-const APP_ORDER = Object.freeze(["jobs", "bank", "transport", "business", "people", "life", "time", "betway"]);
+const APP_ORDER = Object.freeze(["jobs", "study", "transport", "business", "people", "life", "time"]);
+const UTILITY_ORDER = Object.freeze(["bank", "betway"]);
 
 const APP_META = Object.freeze({
   bank: { title: "Bank", icon: "🏦", colour: "blue" },
   betway: { title: "Betway", icon: "🎰", colour: "green" },
   jobs: { title: "Jobs", icon: "💼", colour: "sun" },
+  study: { title: "Study", icon: "🎓", colour: "purple" },
   transport: { title: "Transport", icon: "🚕", colour: "blue" },
   business: { title: "Business", icon: "🏪", colour: "green" },
   people: { title: "People", icon: "🫶", colour: "pink" },
@@ -27,8 +31,8 @@ const safe = (value) => String(value ?? "")
   .replaceAll('"', "&quot;")
   .replaceAll("'", "&#039;");
 
-function action(id, actionName, label, detail = "", disabled = false) {
-  return { id, action: actionName, label, detail, disabled };
+function action(id, actionName, label, detail = "", disabled = false, meta = {}) {
+  return { id, action: actionName, label, detail, disabled, ...meta };
 }
 
 function jobsApp(state) {
@@ -160,12 +164,92 @@ function peopleApp(state) {
   };
 }
 
+function studyApp(state) {
+  const active = state.education?.active;
+  const completed = state.education?.completed || [];
+  if (active) {
+    const programme = getProgrammeById(active.programmeId);
+    const currentDay = Math.max(1, Number(state.calendar?.day) || 1);
+    const total = Math.max(1, Number(active.endDay) - Number(active.startDay));
+    const elapsed = Math.max(0, Math.min(total, currentDay - Number(active.startDay)));
+    const progress = Math.round((elapsed / total) * 100);
+    const checkpointDay = getNextStudyCheckpointDay(state);
+    return {
+      summary: `${programme?.title || "Programme"} · ${progress}% progress`,
+      cards: [{
+        id: "active-study",
+        programmeId: active.programmeId,
+        title: programme?.title || "Active programme",
+        icon: programme?.icon || "🎓",
+        badge: `${progress}% complete`,
+        text: checkpointDay === null
+          ? `Day ${elapsed} of ${total}. Your final result is being prepared.`
+          : `Day ${elapsed} of ${total}. Next checkpoint: day ${checkpointDay}. Focus ${Math.round(active.focus || 0)} · Attendance ${Math.round(active.attendance || 0)}.`,
+        actions: [
+          action("checkpoint", "FAST_FORWARD_STUDY", "Go to next checkpoint", checkpointDay === null ? "No checkpoint remaining" : `Advance toward day ${checkpointDay}`, checkpointDay === null),
+          action(active.programmeId, "WITHDRAW_STUDY", "Withdraw", "Your progress will be recorded as incomplete"),
+        ],
+      }],
+    };
+  }
+
+  const filter = state.settings?.phone?.studyFilter === "all" ? "all" : "recommended";
+  const options = getStudyOptions(state);
+  const visible = filter === "all"
+    ? options
+    : [...options].sort((a, b) => Number(b.eligible) - Number(a.eligible)).slice(0, 3);
+  const cards = visible.map((programme) => ({
+    id: `programme-${programme.id}`,
+    programmeId: programme.id,
+    title: programme.title,
+    icon: programme.icon,
+    badge: programme.eligible ? `${programme.durationDays} days · ${programme.route}` : "Locked for now",
+    text: programme.eligible
+      ? `${programme.description} Course cost ${formatRand(programme.cost)}; choose how to fund it.`
+      : `${programme.description} ${programme.unlockHint || programme.reason}`,
+    actions: programme.availableFundingIds.map((fundingId) => {
+      const funding = getFundingById(fundingId);
+      return action(
+        `${programme.id}:${fundingId}`,
+        "ENROL_STUDY",
+        funding?.title || "Choose funding",
+        funding?.text || "",
+        !programme.eligible,
+        { programmeId: programme.id, fundingId },
+      );
+    }),
+  }));
+  cards.push({
+    id: "study-filter",
+    title: filter === "all" ? "Showing every route" : "Recommended for you",
+    icon: "🧭",
+    badge: filter === "all" ? `${options.length} routes` : `${visible.length} suggestions`,
+    text: filter === "all" ? "Locked choices show a way forward—weak results never end the journey." : "Start with a short list, or browse the full catalogue.",
+    actions: [action(filter === "all" ? "recommended" : "all", "SET_STUDY_FILTER", filter === "all" ? "Show recommendations" : "View all 10 routes")],
+  });
+  if (completed.length) cards.unshift({
+    id: "study-completed",
+    title: "Qualifications earned",
+    icon: "🏅",
+    badge: `${completed.length} completed`,
+    text: completed.map((entry) => getProgrammeById(typeof entry === "string" ? entry : entry.programmeId)?.title || "Completed route").join(" · "),
+    actions: [],
+  });
+  return { summary: completed.length ? `${completed.length} qualification${completed.length === 1 ? "" : "s"}` : "Choose your next step", cards };
+}
+
 function lifeApp(state) {
   const money=buildMoneyReport(state,{recent:true});
+  const completed = state.education?.completed || [];
+  const qualifications = completed.map((entry) => getProgrammeById(typeof entry === "string" ? entry : entry.programmeId)?.title || "Completed route");
+  const studyDebt = (state.finances?.liabilities || []).filter((item) => item.status !== "paid").reduce((sum, item) => sum + Math.max(0, Number(item.outstandingBalance) || 0), 0);
   const stat = (title, value, icon) => ({ id: title.toLowerCase(), title, text: `${value}/100`, icon, badge: "", actions: [] });
   return {
     summary: `${state.life.stage === "later-life" ? "Later life" : state.life.ended ? "Life complete" : `Age ${state.calendar.age}`} · Net worth ${formatRand(state.finances.netWorth)}`,
     cards: [
+      { id: "resume", title: "Your résumé", icon: "📄", text: `${state.profile.name} · ${state.career.active ? state.career.role : "Open to opportunity"}. Qualifications: ${qualifications.length ? qualifications.join(" · ") : "None yet"}.`, badge: `${qualifications.length} qualification${qualifications.length === 1 ? "" : "s"}`, actions: [] },
+      ...(studyDebt > 0 ? [{ id: "study-debt", title: "Study loan", icon: "🏦", text: "Your repayments begin or continue on their scheduled dates. Missing them creates arrears.", badge: `${formatRand(studyDebt)} outstanding`, actions: [] }] : []),
+      { id: "phone-utilities", title: "Money & games", icon: "📱", text: "Your detailed bank record and lucky reels are tucked here to keep the home screen clean.", badge: "Utilities", actions: [action("bank", "OPEN_PHONE_APP", "Open Bank", "", false, { app: "bank" }), action("betway", "OPEN_PHONE_APP", "Open Betway", "Game money only", false, { app: "betway" })] },
       {id:"money-history",title:"Recent money movements",icon:"💳",text:"Your latest recorded payments and earnings.",badge:"Money in / out",money,actions:[]},
       ...(state.dailyState.updates || []).map((text,index) => ({ id: `update-${index}`, title: "Life update", icon: "📩", text, badge: "Consequences", actions: [] })),
       { id: "budget", title: "Living costs", icon: "🏠", text: "Food R25 each day · Electricity R70 every 7 days. Negative cash is debt.", badge: `Cash ${formatRand(state.finances.cash)}`, actions: [] },
@@ -198,7 +282,11 @@ function timeApp(state) {
     cards: [{
       id: "time", icon: "🗓️", title: "How far ahead?", text: "Skip the full period. Decisions are handled automatically, including purchases and commitments. The game favours affordable, lower-risk choices and records what it chose. Promotions, birthdays and follow-ups appear in the final report. A life ending is the only normal event that ends a skip early.", badge: blocked ? "Unavailable" : "Ready",
       actions: [action("week", "FAST_FORWARD", "One week", detail, !week.ok), action("month", "FAST_FORWARD", "One month", month.ok ? detail : month.reason, !month.ok), action("year", "FAST_FORWARD", "Skip one year", year.ok ? detail : year.reason, !year.ok)],
-    }],
+    }, ...(state.education?.active ? [{
+      id: "study-checkpoint", icon: "🎓", title: "Study checkpoint", badge: `Day ${getNextStudyCheckpointDay(state) ?? state.calendar.day}`,
+      text: "Move only until your next important study choice, then take control again.",
+      actions: [action("checkpoint", "FAST_FORWARD_STUDY", "Go to study checkpoint", "Stops before your next study choice", getNextStudyCheckpointDay(state) === null)],
+    }] : [])],
   };
 }
 
@@ -227,22 +315,25 @@ function renderSlots(slots) {
 }
 
 export function buildPhoneModel(state, options = {}) {
-  const builders = { jobs: jobsApp, bank: bankApp, transport: transportApp, business: businessApp, people: peopleApp, life: lifeApp, time: timeApp, betway: betwayApp };
+  const builders = { jobs: jobsApp, study: studyApp, bank: bankApp, transport: transportApp, business: businessApp, people: peopleApp, life: lifeApp, time: timeApp, betway: betwayApp };
   const apps = APP_ORDER.map((id) => ({ id, ...APP_META[id], ...builders[id](state, options) }));
+  const utilities = UTILITY_ORDER.map((id) => ({ id, ...APP_META[id], ...builders[id](state, options) }));
   const notifications = (state.dailyState.updates || []).map(text => ({ app: "life", text }));
   if (state.stokvel.lastPayout) notifications.push({ app: "life", text: `Last stokvel payout: ${formatRand(state.stokvel.lastPayout.amount)} on day ${state.stokvel.lastPayout.day}` });
   if (state.jobs?.activeApplicationId) notifications.push({ app: "jobs", text: "Application pending" });
   if (state.jobs?.lastResult) notifications.push({ app: "jobs", text: state.jobs.lastResult.message });
-  return { apps, notifications };
+  if (state.education?.active) notifications.push({ app: "study", text: "Your programme is active" });
+  if (state.education?.lastOutcome) notifications.push({ app: "study", text: "A study result is ready" });
+  return { apps, utilities, notifications };
 }
 
 function renderAction(item) {
-  return `<button class="phone-action" type="button" data-action="${safe(item.action)}" data-choice="${safe(item.id)}" ${item.disabled ? "disabled" : ""}><span>${safe(item.label)}</span>${item.detail ? `<small>${safe(item.detail)}</small>` : ""}</button>`;
+  return `<button class="phone-action" type="button" data-action="${safe(item.action)}" data-choice="${safe(item.id)}"${item.app ? ` data-app="${safe(item.app)}"` : ""}${item.programmeId ? ` data-programme-id="${safe(item.programmeId)}"` : ""}${item.fundingId ? ` data-funding-id="${safe(item.fundingId)}"` : ""} ${item.disabled ? "disabled" : ""}><span>${safe(item.label)}</span>${item.detail ? `<small>${safe(item.detail)}</small>` : ""}</button>`;
 }
 
 export function renderPhone(model, { open = false, activeApp = "home" } = {}) {
   if (!open) return "";
-  const selected = model.apps.find((app) => app.id === activeApp);
+  const selected = [...model.apps, ...(model.utilities || [])].find((app) => app.id === activeApp);
   const content = selected
     ? `<header class="phone-screen__header"><button type="button" data-action="OPEN_PHONE_APP" data-app="home" aria-label="Back to apps">‹</button><span>${safe(selected.icon)}</span><div><strong>${safe(selected.title)}</strong><small>${safe(selected.summary)}</small></div></header><div class="phone-cards">${selected.cards.map((card) => `<article class="phone-card" data-card-id="${safe(card.id)}"><div class="phone-card__top"><span>${safe(card.icon)}</span><small>${safe(card.badge)}</small></div><h3>${safe(card.title)}</h3><p>${safe(card.text)}</p>${card.art ? renderVehicleArt(card.art) : ""}${card.vehicles ? renderGarage(card.vehicles) : ""}${card.money ? renderMoneyHistory(card.money) : ""}${card.team ? card.team.map((employee,index)=>`<div class="money-row" data-employee-id="${safe(employee.id)}"><span>${index+1}. ${safe(employee.name)}</span><strong>${formatRand(employee.wage)}/day</strong></div>`).join("") : ""}${card.slots ? renderSlots(card.slots) : ""}${card.bet ? renderBetForm(card.bet) : ""}<div class="phone-card__actions">${card.actions.map(renderAction).join("")}</div></article>`).join("")}</div>`
     : `<header class="phone-screen__header phone-screen__header--home"><div><strong>${safe(model.greeting || "Your phone")}</strong><small>${model.notifications.length ? safe(model.notifications[0].text) : "Everything you need, tucked away."}</small></div></header><div class="phone-app-grid">${model.apps.map((app) => `<button class="phone-app phone-app--${safe(app.colour)}" type="button" data-action="OPEN_PHONE_APP" data-app="${safe(app.id)}"><span class="phone-app__icon">${safe(app.icon)}</span><strong>${safe(app.title)}</strong><small>${safe(app.summary)}</small></button>`).join("")}</div>`;

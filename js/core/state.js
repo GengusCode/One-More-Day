@@ -170,7 +170,7 @@ export function createDefaultState() {
       reducedMotion: false,
       sound: false,
       openPanels: [],
-      phone: { open: false, app: "home" },
+      phone: { open: false, app: "home", studyFilter: "recommended" },
     },
   };
 }
@@ -550,10 +550,11 @@ export function validateState(candidate) {
     && typeof source.dailyState.travelContext === "object"
     ? clone(source.dailyState.travelContext)
     : {};
-  const phoneApps = new Set(["home", "jobs", "bank", "transport", "business", "people", "life", "time", "betway"]);
+  const phoneApps = new Set(["home", "jobs", "study", "bank", "transport", "business", "people", "life", "time", "betway"]);
   state.settings.phone = {
     open: Boolean(source.settings?.phone?.open),
     app: phoneApps.has(source.settings?.phone?.app) ? source.settings.phone.app : "home",
+    studyFilter: source.settings?.phone?.studyFilter === "all" ? "all" : "recommended",
   };
   state.timeline.settledDayIds = uniqueStrings(source.timeline?.settledDayIds).slice(-400);
   state.timeline.lastSummary = source.timeline?.lastSummary && typeof source.timeline.lastSummary === "object"

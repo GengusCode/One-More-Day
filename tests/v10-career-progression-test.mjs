@@ -81,7 +81,7 @@ assert.equal(settled.status.promotion, false);
 assert.equal(settled.status.promotionPending, true);
 const panel = getPromotionDecision(settled.state);
 assert.equal(panel.choices.length >= 3, true);
-assert.equal(panel.choices.every((choice) => choice.action === "CHOOSE_PROMOTION"), true);
+assert.equal(panel.choices.every((choice) => choice.action === "RESOLVE_PROMOTION"), true);
 
 const promoted = resolvePromotionDecision(settled.state, "show-results", { random: () => 0 });
 assert.equal(promoted.ok, true);

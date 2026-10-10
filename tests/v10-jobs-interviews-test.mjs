@@ -96,7 +96,7 @@ assert.equal(invited.interviewScheduled, true);
 assert.equal(invited.state.career.active, false);
 assert.equal(invited.state.jobs.pendingInterview.applicationId, applied.applicationId);
 const interview = getInterviewDecision(invited.state);
-assert.equal(interview.choices.every((choice) => choice.action === "CHOOSE_INTERVIEW"), true);
+assert.equal(interview.choices.every((choice) => choice.action === "RESOLVE_INTERVIEW"), true);
 
 const firstOutcome = resolveInterview(invited.state, "show-examples", { random: () => 0 });
 const secondOutcome = resolveInterview(structuredClone(invited.state), "show-examples", { random: () => 0 });

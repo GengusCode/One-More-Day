@@ -321,7 +321,7 @@ export function getInterviewDecision(state) {
       kicker: "INTERVIEW UPDATE",
       title: "This interview is unavailable",
       text: "Close the expired invitation and return to Jobs.",
-      choices: [{ id: "close-invalid", label: "Close invitation", detail: "Your other progress will stay safe.", action: "CHOOSE_INTERVIEW" }],
+      choices: [{ id: "close-invalid", label: "Close invitation", detail: "Your other progress will stay safe.", action: "RESOLVE_INTERVIEW" }],
     };
   }
   const employer = getEmployer(pending.employerId);
@@ -332,7 +332,7 @@ export function getInterviewDecision(state) {
     text: pending.referralPersonId
       ? "Your reference opened the door. Your answer still decides what happens next."
       : "One clear answer can turn this application into a real opportunity.",
-    choices: INTERVIEW_CHOICES.map((choice) => ({ ...choice, action: "CHOOSE_INTERVIEW" })),
+    choices: INTERVIEW_CHOICES.map((choice) => ({ ...choice, action: "RESOLVE_INTERVIEW" })),
   };
 }
 

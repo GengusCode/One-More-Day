@@ -56,17 +56,18 @@ test("secondary systems stay in phone apps", () => {
   const model = buildPhoneModel(state);
   assert.deepEqual(
     model.apps.map(({ id }) => id),
-    ["jobs", "bank", "transport", "business", "people", "life", "time", "betway"],
+    ["jobs", "study", "transport", "business", "people", "life", "time"],
   );
+  assert.deepEqual(model.utilities.map(({ id }) => id), ["bank", "betway"]);
 });
 
 test("the production entry references existing local modules and styles", async () => {
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
   assert.match(html, /id="app"/);
   assert.match(html, /type="module"\s+src="js\/app\.js"/);
-  assert.match(html, /href="v09-life-begins\.css(?:\?v=[\w-]+)?"/);
+  assert.match(html, /href="v10-level-up\.css(?:\?v=[\w-]+)?"/);
   await access(new URL("../js/app.js", import.meta.url));
-  await access(new URL("../v09-life-begins.css", import.meta.url));
+  await access(new URL("../v10-level-up.css", import.meta.url));
   await assert.rejects(access(new URL("../v08-preview.html", import.meta.url)));
 });
 
@@ -103,12 +104,12 @@ test("reduced motion money feedback settles immediately without dropping announc
   assert.deepEqual(events, ["show:tx-9", "announce:tx-9", "settle:tx-9"]);
 });
 
-test("blocks saves from a page whose version marker does not match v0.9", () => {
-  assert.equal(APP_VERSION, "0.9");
-  assert.equal(isCompatiblePageVersion("0.9", 9), true);
-  assert.equal(isCompatiblePageVersion("0.8", 9), false);
-  assert.equal(isCompatiblePageVersion("0.9", 8), false);
-  assert.equal(isCompatiblePageVersion("", 8), false);
+test("blocks saves from a page whose version marker does not match v0.10", () => {
+  assert.equal(APP_VERSION, "0.10");
+  assert.equal(isCompatiblePageVersion("0.10", 10), true);
+  assert.equal(isCompatiblePageVersion("0.9", 10), false);
+  assert.equal(isCompatiblePageVersion("0.10", 9), false);
+  assert.equal(isCompatiblePageVersion("", 9), false);
 });
 
 test("shows setup-level errors instead of leaving the start screen silent", () => {

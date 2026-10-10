@@ -14,8 +14,10 @@ import { buyBusinessVehicle, setVehicleParking, changeHome, selectPersonalVehicl
 import { buyUpgrade, hireEmployee, expandBusiness } from "./systems/business.js";
 import { buyTransportAsset, assignCarForDay } from "./systems/travel.js";
 import { chooseSchoolDecision, expireEntranceQuestion } from "./systems/life.js";
-import { applyForJob } from "./systems/jobs.js";
-import { fastForward } from "./systems/timeline.js";
+import { applyForJob, resolveInterview } from "./systems/jobs.js";
+import { resolvePromotionDecision } from "./systems/career.js";
+import { enrolInProgramme, resolveStudyDecision, withdrawFromProgramme } from "./systems/education.js";
+import { fastForward, fastForwardToStudyCheckpoint } from "./systems/timeline.js";
 import {
   startDay,
   choosePath,
@@ -175,7 +177,7 @@ async function dispatch(action, payload = {}) {
     return;
   }
   if (action === "RESET_LIFE") {
-    if (!state.life.ended && !window.confirm("Start a new life? Your v0.9 progress on this device will be cleared.")) return;
+    if (!state.life.ended && !window.confirm("Start a new life? Your v0.10 progress on this device will be cleared.")) return;
     try {
       const fresh = createDefaultState();
       fresh.settings.lastQuizIds = previousQuizIds;
@@ -193,11 +195,83 @@ async function dispatch(action, payload = {}) {
   }
   if (["OPEN_PHONE", "CLOSE_PHONE", "OPEN_PHONE_APP"].includes(action)) {
     const next = structuredClone(state);
-    if (action === "OPEN_PHONE") next.settings.phone = { open: true, app: "home" };
-    if (action === "CLOSE_PHONE") next.settings.phone = { open: false, app: "home" };
-    if (action === "OPEN_PHONE_APP") next.settings.phone = { open: true, app: payload.app || payload.id || "home" };
+    if (action === "OPEN_PHONE") next.settings.phone = { ...next.settings.phone, open: true, app: "home" };
+    if (action === "CLOSE_PHONE") next.settings.phone = { ...next.settings.phone, open: false, app: "home" };
+    if (action === "OPEN_PHONE_APP") next.settings.phone = { ...next.settings.phone, open: true, app: payload.app || payload.id || "home" };
     await commit(next);
     render();
+    return;
+  }
+  if (action === "SET_STUDY_FILTER") {
+    const next = structuredClone(state);
+    next.settings.phone = {
+      ...next.settings.phone,
+      open: true,
+      app: "study",
+      studyFilter: payload.id === "all" ? "all" : "recommended",
+    };
+    await commit(next);
+    render();
+    return;
+  }
+  if (action === "ENROL_STUDY") {
+    const request = { programmeId: payload.programmeId, fundingId: payload.fundingId };
+    let result = enrolInProgramme(state, request);
+    if (!result.ok && result.status === "career-conflict") {
+      const confirmed = window.confirm("Accepting this paid learnership means leaving your current work commitment. Continue?");
+      if (!confirmed) return;
+      const withoutWork = structuredClone(state);
+      if (withoutWork.career?.active) withoutWork.career.active = false;
+      if (withoutWork.business?.active) withoutWork.business.active = false;
+      result = enrolInProgramme(withoutWork, request);
+    }
+    if (!result.ok) error = result.reason || "That study route is not available yet.";
+    else {
+      const next = structuredClone(result.state);
+      next.settings.phone = { ...next.settings.phone, open: false, app: "home" };
+      await commit(next);
+    }
+    render({ focusTarget: result.ok ? "#today-title" : undefined });
+    return;
+  }
+  if (action === "WITHDRAW_STUDY") {
+    const result = withdrawFromProgramme(state);
+    if (!result.ok) error = result.reason || "There is no active programme to withdraw from.";
+    else await commit(result.state);
+    render();
+    return;
+  }
+  if (action === "CHOOSE_STUDY") {
+    const result = resolveStudyDecision(state, payload.id);
+    if (!result.ok) error = result.reason || result.status?.reason || "That study choice is no longer available.";
+    else await commit(result.state);
+    render({ focusTarget: "#today-title" });
+    return;
+  }
+  if (action === "RESOLVE_INTERVIEW") {
+    const result = resolveInterview(state, payload.id);
+    if (!result.ok) error = result.status?.reason || "That interview is no longer available.";
+    else await commit(result.state);
+    render({ focusTarget: "#today-title" });
+    return;
+  }
+  if (action === "RESOLVE_PROMOTION") {
+    const result = resolvePromotionDecision(state, payload.id);
+    if (!result.ok) error = result.status?.reason || "That promotion choice is no longer available.";
+    else await commit(result.state);
+    render({ focusTarget: "#today-title" });
+    return;
+  }
+  if (action === "FAST_FORWARD_STUDY") {
+    const result = fastForwardToStudyCheckpoint(state);
+    if (result.summary.reason === "no-active-programme" || result.summary.reason === "study-unavailable" || result.summary.reason === "unfinished-day") {
+      error = result.summary.reason.replaceAll("-", " ");
+    } else {
+      const next = structuredClone(result.state);
+      next.settings.phone = { ...next.settings.phone, open: false, app: "home" };
+      await commit(next);
+    }
+    render({ focusTarget: "#today-title" });
     return;
   }
   if (action === "EXAM_TIMEOUT") {

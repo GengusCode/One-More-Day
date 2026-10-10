@@ -305,7 +305,13 @@ export function createRenderer({ root, dispatch }) {
     if (!button || !root.contains(button) || button.disabled) return;
     const action = button.dataset.action;
     if (action === "START_LIFE") return;
-    dispatch(action, { id: button.dataset.choice || "", panel: button.dataset.panel || "", app: button.dataset.app || "" });
+    dispatch(action, {
+      id: button.dataset.choice || "",
+      panel: button.dataset.panel || "",
+      app: button.dataset.app || "",
+      programmeId: button.dataset.programmeId || "",
+      fundingId: button.dataset.fundingId || "",
+    });
   };
   const onSubmit = (event) => {
     if (event.target.dataset.form === "betway") {

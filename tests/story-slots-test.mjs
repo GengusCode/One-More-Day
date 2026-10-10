@@ -58,7 +58,7 @@ test('uncertain loan repayment is chosen once, saved and not rerolled when due',
 });
 test('spinning reels disable new wagers and keep the result hidden until they stop',()=>{
  const state=placeBet(createDefaultState(),10,{random:()=>0}).state;
- const phone=buildPhoneModel(state,{slotsSpinning:true});const card=phone.apps.find(app=>app.id==='betway').cards[0];
+ const phone=buildPhoneModel(state,{slotsSpinning:true});const card=phone.utilities.find(app=>app.id==='betway').cards[0];
  assert.equal(card.bet.disabled,true);assert.ok(card.actions.every(action=>action.disabled));
  const html=renderPhone(phone,{open:true,activeApp:'betway'});assert.match(html,/slot-machine--spinning/);assert.doesNotMatch(html,/JACKPOT!/);
 });

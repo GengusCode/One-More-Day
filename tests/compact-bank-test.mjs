@@ -7,7 +7,7 @@ let s=createDefaultState();s.finances.cash=1000;
 for(let i=0;i<65;i++)s=applyEffects(s,{cash:i%2?10:-5},{source:'check',label:'Movement '+i}).state;
 assert.equal(s.finances.transactions.length,65,'bank keeps all new recorded transactions');
 assert.equal(validateState(s).finances.transactions.length,65,'history survives reload');
-const bank=buildPhoneModel(s).apps.find(app=>app.id==='bank');assert.ok(bank,'Bank app exists');
+const bank=buildPhoneModel(s).utilities.find(app=>app.id==='bank');assert.ok(bank,'Bank app exists');
 const html=renderPhone(buildPhoneModel(s),{open:true,activeApp:'bank'});
 assert.match(html,/Current balance/);assert.match(html,/Income/);assert.match(html,/Expenses/);
 assert.match(html,/Movement 0/);assert.match(html,/Movement 64/);

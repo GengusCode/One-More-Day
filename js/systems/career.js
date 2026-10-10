@@ -205,7 +205,7 @@ export function getPromotionDecision(state) {
     title: `Why should you become ${target.name}?`,
     text: "The panel is listening. Choose the answer that fits the workplace and your record.",
     targetRoleId: target.id,
-    choices: PROMOTION_CHOICES.map((choice) => ({ ...choice, action: "CHOOSE_PROMOTION" })),
+    choices: PROMOTION_CHOICES.map((choice) => ({ ...choice, action: "RESOLVE_PROMOTION" })),
   };
 }
 

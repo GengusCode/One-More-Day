@@ -1,0 +1,145 @@
+@import url("v09-life-begins.css?v=20261004-time2");
+
+:root {
+  --level-up-violet: #6d4aff;
+  --level-up-mint: #19a974;
+  --level-up-sky: #2c8ee8;
+  --level-up-sun: #ffbf2f;
+}
+
+body {
+  background:
+    radial-gradient(circle at 8% 5%, rgba(255, 191, 47, .2), transparent 28rem),
+    radial-gradient(circle at 92% 25%, rgba(44, 142, 232, .16), transparent 30rem),
+    #fff9ed;
+}
+
+body:has(.phone-overlay) {
+  overflow: hidden;
+}
+
+.game-shell {
+  animation: level-up-arrive .45s cubic-bezier(.2, .8, .2, 1) both;
+}
+
+.phone-launch {
+  background: linear-gradient(135deg, #1d2440, #43348f 60%, var(--level-up-violet));
+  box-shadow: 0 12px 28px rgba(57, 43, 138, .3), inset 0 1px 0 rgba(255,255,255,.25);
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+
+.phone-launch:hover,
+.phone-launch:focus-visible {
+  transform: translateY(-2px) rotate(-1deg);
+  box-shadow: 0 16px 34px rgba(57, 43, 138, .38), inset 0 1px 0 rgba(255,255,255,.3);
+}
+
+.phone-device {
+  background: linear-gradient(160deg, #202541, #090b14 65%);
+  box-shadow: 0 26px 80px rgba(9, 11, 20, .48), inset 0 1px 1px rgba(255,255,255,.25);
+  animation: phone-pop .28s cubic-bezier(.2, .9, .25, 1.15) both;
+}
+
+.phone-screen {
+  background:
+    radial-gradient(circle at 12% 8%, rgba(255, 191, 47, .2), transparent 32%),
+    linear-gradient(165deg, #fffdf8, #f3f4ff 56%, #eefcff);
+}
+
+.phone-screen__header {
+  background: rgba(255,255,255,.82);
+  border-bottom: 1px solid rgba(77, 63, 146, .12);
+  backdrop-filter: blur(12px);
+}
+
+.phone-app-grid {
+  align-content: start;
+  gap: .72rem;
+}
+
+.phone-app {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(40, 45, 78, .08);
+  box-shadow: 0 8px 20px rgba(48, 45, 91, .11);
+  transition: transform .16s ease, box-shadow .16s ease, filter .16s ease;
+}
+
+.phone-app:hover,
+.phone-app:focus-visible {
+  transform: translateY(-3px) scale(1.015);
+  box-shadow: 0 13px 25px rgba(48, 45, 91, .18);
+  filter: saturate(1.08);
+}
+
+.phone-app--purple { background: linear-gradient(145deg, #eee9ff, #dcd3ff); }
+.phone-app--sun { background: linear-gradient(145deg, #fff6cf, #ffe59a); }
+.phone-app--green { background: linear-gradient(145deg, #e5faef, #bfeecf); }
+.phone-app--blue { background: linear-gradient(145deg, #e7f4ff, #c9e7ff); }
+.phone-app--pink { background: linear-gradient(145deg, #ffeaf3, #ffd1e4); }
+.phone-app--orange { background: linear-gradient(145deg, #fff0df, #ffd4a3); }
+
+.phone-app__icon {
+  filter: drop-shadow(0 3px 4px rgba(40, 35, 72, .15));
+  animation: icon-breathe 2.8s ease-in-out infinite;
+}
+
+.phone-card {
+  border: 1px solid rgba(70, 65, 112, .1);
+  box-shadow: 0 9px 22px rgba(49, 47, 84, .09);
+  animation: card-rise .32s ease both;
+}
+
+.phone-card:nth-child(2) { animation-delay: .04s; }
+.phone-card:nth-child(3) { animation-delay: .08s; }
+
+.phone-action {
+  transition: transform .14s ease, box-shadow .14s ease, background .14s ease;
+}
+
+.phone-action:not(:disabled):hover,
+.phone-action:not(:disabled):focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 7px 16px rgba(64, 50, 153, .18);
+}
+
+.phone-action[data-action="ENROL_STUDY"],
+.phone-action[data-action="FAST_FORWARD_STUDY"] {
+  background: linear-gradient(135deg, var(--level-up-violet), #8e6cff);
+  color: #fff;
+}
+
+@keyframes level-up-arrive {
+  from { opacity: 0; transform: translateY(8px); }
+}
+
+@keyframes phone-pop {
+  from { opacity: 0; transform: translateY(18px) scale(.94); }
+}
+
+@keyframes card-rise {
+  from { opacity: 0; transform: translateY(8px); }
+}
+
+@keyframes icon-breathe {
+  50% { transform: translateY(-2px) scale(1.04); }
+}
+
+@media (max-width: 360px) {
+  .phone-device { width: min(calc(100% - 10px), 390px); }
+  .phone-screen { padding-inline: .65rem; }
+  .phone-app-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .55rem; }
+  .phone-app { padding: .72rem .55rem; }
+  .phone-app small { overflow-wrap: anywhere; }
+  .phone-card { padding: .82rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .game-shell,
+  .phone-device,
+  .phone-card,
+  .phone-app__icon { animation: none; }
+  .phone-launch,
+  .phone-app,
+  .phone-action { transition: none; }
+}
